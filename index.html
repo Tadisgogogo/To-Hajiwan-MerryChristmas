@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jewel Christmas Tree - Infinite Flow</title>
+    <title>Jewel Christmas Tree - Final Control</title>
     <style>
         body { 
             margin: 0;
@@ -49,23 +49,25 @@
             z-index: 10;
         }
 
-        /* 跟随手移动的光标 */
+        /* 光标样式 - 更加醒目 */
         #cursor {
             position: absolute;
             top: -100px; left: -100px;
-            width: 40px; height: 40px; /* 稍微调大一点更容易看清 */
-            border: 2px solid #fff;
+            width: 40px; height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.8);
             border-radius: 50%;
             pointer-events: none;
             z-index: 50;
-            box-shadow: 0 0 10px #ffd700, inset 0 0 5px #ffd700;
-            transition: transform 0.05s, border-color 0.2s; /* 响应更快 */
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.5), inset 0 0 10px rgba(255, 215, 0, 0.2);
+            transition: transform 0.05s linear, border-color 0.1s, width 0.2s, height 0.2s;
+            mix-blend-mode: difference; /* 让光标在亮背景下也能看清 */
         }
+        /* 光标中心点 */
         #cursor::after {
             content: '';
             position: absolute;
             top: 50%; left: 50%;
-            width: 4px; height: 4px;
+            width: 6px; height: 6px;
             background: #ffd700;
             border-radius: 50%;
             transform: translate(-50%, -50%);
@@ -113,7 +115,7 @@
         import { FilesetResolver, HandLandmarker } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0';
 
         // ==========================================
-        // 照片列表
+        // 【照片列表】
         // ==========================================
         const PRESET_PHOTOS = [
             '1.jpg', '2.jpg', '3.jpg', '4.jpg', '5.jpg', 
@@ -221,6 +223,7 @@
             blueLight.position.set(-40, -30, 40);
             scene.add(blueLight);
 
+            // 泛光参数设置
             const bloomPass = new UnrealBloomPass(new THREE.Vector2(wrapper.clientWidth, wrapper.clientHeight), 1.5, 0.4, 0.85);
             bloomPass.threshold = 0.8;  
             bloomPass.strength = 0.2;   
@@ -534,11 +537,11 @@
                 const wrapper = document.getElementById('canvas-wrapper');
                 const x = handPos.x * wrapper.clientWidth;
                 const y = handPos.y * wrapper.clientHeight;
-                cursor.style.transform = `translate(${x - 15}px, ${y - 15}px)`; 
+                cursor.style.transform = `translate(${x - 20}px, ${y - 20}px)`; // Center 40px cursor
                 mouseVector.x = (handPos.x * 2) - 1;
                 mouseVector.y = -(handPos.y * 2) + 1;
             } else {
-                 cursor.style.transform = `translate(-100px, -100px)`;
+                 cursor.style.transform = `translate(-200px, -200px)`;
                  mouseVector.set(-99, -99);
             }
 
@@ -580,7 +583,7 @@
                     const deltaY = handPos.y - lastHandPos.y;
                     
                     if (Math.abs(deltaX) > 0.001) rotationVelocity.y += deltaX * 0.15;
-                    // 【关键修复】增强上下控制灵敏度，并且不再强制归零
+                    // 【关键修复】增强上下控制灵敏度
                     if (Math.abs(deltaY) > 0.001) rotationVelocity.x += deltaY * 0.20;
                     
                     lastHandPos.x = handPos.x; lastHandPos.y = handPos.y;
@@ -589,14 +592,13 @@
                 rotationVelocity.y *= 0.95;
                 rotationVelocity.x *= 0.95; 
 
-                // 【关键修复】删除了 mainGroup.rotation.x *= 0.98;
+                // 【彻底修复回正问题】移除所有自动回正逻辑
                 // 现在树会停在你旋转到的任何角度，不会自动回正
                 mainGroup.rotation.y += rotationVelocity.y;
                 mainGroup.rotation.x += rotationVelocity.x;
 
             } else if (currentState === STATE.TREE) {
                 mainGroup.rotation.y += 0.002;
-                // 聚合态是否回正X轴？这里保留轻微回正，看起来整齐点
                 mainGroup.rotation.x *= 0.95;
             }
             composer.render();
@@ -672,16 +674,18 @@
             photoMeshes.forEach((mesh, idx) => {
                 let targetPos, targetScale = 2.0; 
                 if (currentState === STATE.SCATTER) {
-                    // 如果被光标对准，放大并增亮
+                    // 光标选中变绿，变大
                     if (idx === hoveredPhotoIndex) {
                         targetScale = 5.0; 
                         mesh.material.color.setHex(0xffffff); // 变亮
-                        document.getElementById('cursor').style.borderColor = '#00ff88'; // 光标变色提示
+                        document.getElementById('cursor').style.borderColor = '#00ff88'; // 光标变绿提示
                     } else {
-                        // 未选中时缩小
+                        // 未选中时
                         targetScale = 2.5;
-                        mesh.material.color.setHex(0x666666); // 默认更暗
-                        if(idx !== hoveredPhotoIndex) document.getElementById('cursor').style.borderColor = '#fff';
+                        mesh.material.color.setHex(0x666666); // 默认暗
+                        if(idx !== hoveredPhotoIndex && document.getElementById('cursor').style.borderColor === 'rgb(0, 255, 136)') {
+                            document.getElementById('cursor').style.borderColor = 'rgba(255,255,255,0.8)';
+                        }
                     }
                     mesh.lookAt(camera.position); 
                 }
@@ -689,7 +693,7 @@
                     const targetWorldPos = new THREE.Vector3(0, 0, 80); 
                     targetPos = mainGroup.worldToLocal(targetWorldPos);
                     targetScale = 5.0; 
-                    mesh.material.color.setHex(0xffffff); // 选中时恢复亮度
+                    mesh.material.color.setHex(0xffffff); 
                     mesh.lookAt(camera.position); 
                 } else {
                     targetPos = currentState === STATE.TREE ? mesh.userData.treePos : mesh.userData.scatterPos;
@@ -762,8 +766,9 @@
 
         function handleGesture(landmarks) {
             const wrist = landmarks[0];
-            // 边缘保护
-            if (wrist.x < 0.05 || wrist.x > 0.95 || wrist.y < 0.05 || wrist.y > 0.95) return;
+            // 【关键修复】扩大边缘保护区：屏幕边缘 15% 区域不响应手势
+            // 这样手移出屏幕时绝对不会触发“握拳”
+            if (wrist.x < 0.15 || wrist.x > 0.85 || wrist.y < 0.15 || wrist.y > 0.85) return;
 
             const palmX = 1 - (landmarks[0].x + landmarks[9].x) / 2;
             const palmY = (landmarks[0].y + landmarks[9].y) / 2;
@@ -771,12 +776,19 @@
             handPos.y = handPos.y * 0.8 + palmY * 0.2;
 
             let folded = 0;
-            [8,12,16,20].forEach(i => { 
-                const d = Math.sqrt(Math.pow(landmarks[i].x-landmarks[0].x,2) + Math.pow(landmarks[i].y-landmarks[0].y,2));
-                if(d < 0.35) folded++; 
+            [4,8,12,16,20].forEach(i => { // 检查5根手指
+                const tip = landmarks[i];
+                const base = landmarks[0]; // 手腕
+                const d = Math.sqrt(Math.pow(tip.x-base.x,2) + Math.pow(tip.y-base.y,2));
+                if(d < 0.30) folded++; 
             });
+            // 【关键修复】判定更严格：必须5指全弯才算拳头
+            const isFist = folded >= 5; 
+            
+            // 捏合判定 (食指和拇指)
             const dPinch = Math.sqrt(Math.pow(landmarks[4].x-landmarks[8].x,2) + Math.pow(landmarks[4].y-landmarks[8].y,2));
-            const isPinch = dPinch < 0.1; const isFist = folded >= 4;
+            const isPinch = dPinch < 0.08; 
+            
             const isOpen = !isFist && !isPinch;
 
             const status = document.getElementById('status-text');
@@ -785,11 +797,12 @@
                     currentState = STATE.ZOOM;
                     status.innerHTML = "状态: <span style='color:#ffd700'>抓取照片</span>";
                     
-                    // 【关键修复】彻底删除备用方案，只认光标
+                    // 【关键修复】只抓取光标选中的照片，如果没有选中，不做任何操作！
+                    // 彻底删除了“选最近照片”的备用逻辑
                     if (hoveredPhotoIndex !== -1) {
                         zoomTargetIndex = hoveredPhotoIndex;
                     } 
-                    // 如果没对准，就什么都不做！(ZoomTargetIndex 保持 -1)
+                    // 如果 zoomTargetIndex 是 -1，什么都不会发生，直到你对准为止
                 }
             } else if (isFist) {
                 if (currentState !== STATE.TREE) {
