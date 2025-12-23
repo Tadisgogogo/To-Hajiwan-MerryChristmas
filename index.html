@@ -28,9 +28,6 @@
             display: block;
         }
         
-        /* 【修改】调整了视频窗口的透明度，让它更不显眼，
-           如果你想连右上角的视频小窗也完全隐藏，把下面的 opacity: 0.6 改为 0 即可 
-        */
         #video-container {
             position: absolute;
             top: 20px; right: 20px; width: 160px; height: 120px; z-index: 2;
@@ -39,7 +36,7 @@
             transform: scaleX(-1); 
             background: rgba(0,0,0,0.5);
             transition: opacity 0.5s;
-            opacity: 0.6; 
+            opacity: 0.6;
         }
         #input-video { 
             width: 100%;
@@ -52,16 +49,30 @@
             z-index: 10;
         }
 
-        /* 【修改】将 UI 层直接隐藏 */
-        #ui-layer {
-            display: none; 
+        /* 【新增】屏幕中心的光标 */
+        #cursor {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 40px; height: 40px;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 50;
+        }
+        #cursor::before, #cursor::after {
+            content: '';
+            position: absolute;
+            background: rgba(255, 255, 255, 0.8);
+            box-shadow: 0 0 4px #ffd700;
+        }
+        #cursor::before {
+            top: 19px; left: 0; width: 40px; height: 2px;
+        }
+        #cursor::after {
+            top: 0; left: 19px; width: 2px; height: 40px;
         }
 
-        /* 【修改】将全屏按钮直接隐藏 */
-        #fullscreen-btn {
-            display: none;
-        }
-
+        #ui-layer { display: none; }
+        #fullscreen-btn { display: none; }
         #loading { display: none; }
     </style>
     <script type="importmap">
@@ -76,16 +87,15 @@
 <body>
 
     <div id="canvas-wrapper">
-       
         <div id="canvas-container"></div>
         
+        <div id="cursor"></div>
+
         <div id="video-container">
             <video id="input-video" autoplay playsinline muted></video>
             <canvas id="skeleton-canvas"></canvas>
         </div>
-
-        <button id="fullscreen-btn" onclick="toggleUI()" title="切换沉浸模式">⛶</button>
-
+        <button id="fullscreen-btn" onclick="toggleUI()">⛶</button>
         <div id="ui-layer">
             <div id="status-text">系统初始化...</div>
             <div class="instructions"></div>
@@ -103,14 +113,13 @@
         import { FilesetResolver, HandLandmarker } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0';
 
         // ==========================================
-        // 【修改】在此处预设你的照片文件名
-        // 请确保这些文件已经上传到 GitHub 仓库的同一个文件夹下
+        // 【重要】照片列表
         // ==========================================
         const PRESET_PHOTOS = [
-            '1.jpg', 
-            '2.jpg',
-            '3.jpg'
-            // 如果有更多，继续按格式添加： '文件名.jpg',
+            '1.jpg', '2.jpg', '3.jpg', '4.jpg', '5.jpg', 
+            '6.jpg', '7.jpg', '8.jpg', '9.jpg', '10.jpg',
+            '11.jpg', '12.jpg', '13.jpg', '14.jpg', '15.jpg',
+            '16.jpg', '17.jpg', '18.jpg'
         ];
 
         // --- Config ---
@@ -147,6 +156,11 @@
         let photoMeshes = [];
         let zoomTargetIndex = -1;
         
+        // 【新增】射线检测变量
+        const raycaster = new THREE.Raycaster();
+        const centerPointer = new THREE.Vector2(0, 0); // 屏幕中心
+        let hoveredPhotoIndex = -1; // 当前准星对准的照片索引
+
         // Ribbon Data
         let ribbonMesh;
         const RIBBON_COUNT = 12; 
@@ -206,10 +220,10 @@
             const blueLight = new THREE.PointLight(0x0055ff, 50, 150);
             blueLight.position.set(-40, -30, 40);
             scene.add(blueLight);
-            
+
             const bloomPass = new UnrealBloomPass(new THREE.Vector2(wrapper.clientWidth, wrapper.clientHeight), 1.5, 0.4, 0.85);
-            bloomPass.threshold = 0.3;
-            bloomPass.strength = 1.2;
+            bloomPass.threshold = 0.6; 
+            bloomPass.strength = 1.0;
             bloomPass.radius = 0.8;
             composer = new EffectComposer(renderer);
             composer.addPass(new RenderPass(scene, camera));
@@ -225,22 +239,20 @@
             scene.add(mainGroup);
             window.addEventListener('resize', onWindowResize);
 
-            // 【修改】初始化时加载预设照片
             loadPresetPhotos();
         }
 
-        // 【修改】加载预设照片的新函数
         function loadPresetPhotos() {
             PRESET_PHOTOS.forEach(url => {
                 const img = new Image();
-                img.crossOrigin = "Anonymous"; // 允许跨域（如果有需要）
+                img.crossOrigin = "Anonymous"; 
                 img.src = url;
                 img.onload = () => {
                     addPhotoMesh(img);
                     console.log(`Loaded photo: ${url}`);
                 };
                 img.onerror = () => {
-                    console.warn(`Failed to load photo: ${url}. Make sure uploaded to GitHub.`);
+                    console.warn(`无法加载照片: ${url}`);
                 };
             });
         }
@@ -739,6 +751,7 @@
             updateRibbons();
             updateSnow();
             updateSurfaceSnow();
+            updateRaycaster(); // 【新增】更新射线检测
 
             if (logicData.star) {
                 let target = currentState === STATE.TREE ?
@@ -776,6 +789,23 @@
                 mainGroup.rotation.x *= 0.95;
             }
             composer.render();
+        }
+
+        // 【新增】更新射线检测，寻找屏幕中心对准的照片
+        function updateRaycaster() {
+            if (currentState !== STATE.SCATTER) {
+                hoveredPhotoIndex = -1;
+                return;
+            }
+            raycaster.setFromCamera(centerPointer, camera);
+            const intersects = raycaster.intersectObjects(photoMeshes);
+            if (intersects.length > 0) {
+                const hit = intersects[0].object;
+                const idx = photoMeshes.indexOf(hit);
+                hoveredPhotoIndex = idx;
+            } else {
+                hoveredPhotoIndex = -1;
+            }
         }
 
         function updateInstancedMesh(mesh, dataArray) {
@@ -832,12 +862,22 @@
             photoMeshes.forEach((mesh, idx) => {
                 let targetPos, targetScale = 2.0; 
                 if (currentState === STATE.SCATTER) {
-                    targetScale = 4.0; mesh.lookAt(camera.position); 
+                    // 【修改】如果被准星对准，稍微放大并增亮
+                    if (idx === hoveredPhotoIndex) {
+                        targetScale = 5.0; 
+                        mesh.material.color.setHex(0xffffff); // 变亮
+                    } else {
+                        targetScale = 4.0;
+                        mesh.material.color.setHex(0x888888); // 恢复灰色
+                    }
+                    mesh.lookAt(camera.position); 
                 }
                 if (currentState === STATE.ZOOM && idx === zoomTargetIndex) {
                     const targetWorldPos = new THREE.Vector3(0, 0, 80); 
                     targetPos = mainGroup.worldToLocal(targetWorldPos);
-                    targetScale = 5.0; mesh.lookAt(camera.position); 
+                    targetScale = 5.0; 
+                    mesh.material.color.setHex(0xffffff);
+                    mesh.lookAt(camera.position); 
                 } else {
                     targetPos = currentState === STATE.TREE ? mesh.userData.treePos : mesh.userData.scatterPos;
                     if(currentState !== STATE.TREE) mesh.position.y += Math.sin(time+idx)*0.01;
@@ -882,7 +922,6 @@
                 if (result.landmarks && result.landmarks.length > 0) {
                     const landmarks = result.landmarks[0];
                     isHandPresent = true;
-                    // 【修改】注释掉下面这一行，就不会画出绿色的骨架线条了
                     // drawSkeleton(ctx, landmarks, canvas.width, canvas.height);
                     handleGesture(landmarks);
                 } else { isHandPresent = false;
@@ -908,6 +947,10 @@
         }
 
         function handleGesture(landmarks) {
+            // 【新增】边缘保护：如果手腕在屏幕边缘 5% 范围内，直接忽略（防止手移出屏幕时的误识别）
+            const wrist = landmarks[0];
+            if (wrist.x < 0.05 || wrist.x > 0.95 || wrist.y < 0.05 || wrist.y > 0.95) return;
+
             const palmX = 1 - (landmarks[0].x + landmarks[9].x) / 2;
             const palmY = (landmarks[0].y + landmarks[9].y) / 2;
             handPos.x = handPos.x * 0.8 + palmX * 0.2;
@@ -927,7 +970,12 @@
                 if (photoMeshes.length > 0) {
                     currentState = STATE.ZOOM;
                     status.innerHTML = "状态: <span style='color:#ffd700'>抓取照片</span>";
-                    if (zoomTargetIndex === -1) {
+                    
+                    // 【修改】优先抓取光标对准的照片，如果没有对准，则不进行操作（或保持原逻辑）
+                    if (hoveredPhotoIndex !== -1) {
+                        zoomTargetIndex = hoveredPhotoIndex;
+                    } else if (zoomTargetIndex === -1) {
+                        // 备用：如果没有对准任何照片，就抓距离最近的
                         let minDist = Infinity, bestIdx = 0;
                         photoMeshes.forEach((mesh, idx) => {
                             const d = mesh.getWorldPosition(new THREE.Vector3()).distanceTo(camera.position);
@@ -982,9 +1030,10 @@
             tex.needsUpdate = true; tex.colorSpace = THREE.SRGBColorSpace;
             let w = 4, h = 4;
             if(img.width > img.height) h = 4 * (img.height/img.width); else w = 4 * (img.width/img.height);
+            // 降低照片亮度，使用灰色(0x888888)防止过曝
             const mesh = new THREE.Mesh(
                 new THREE.PlaneGeometry(w, h),
-                new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide })
+                new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, color: 0x888888 })
             );
             const frame = new THREE.Mesh(new THREE.BoxGeometry(w+0.2, h+0.2, 0.1), new THREE.MeshPhysicalMaterial({color:0xffd700, roughness:0.2, metalness:1}));
             frame.position.z = -0.06; mesh.add(frame);
