@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jewel Christmas Tree - Final Control</title>
+    <title>Jewel Christmas Tree - Debug Version</title>
     <style>
         body { 
             margin: 0;
@@ -14,6 +14,7 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
+            color: #fff;
         }
 
         #canvas-wrapper {
@@ -49,20 +50,19 @@
             z-index: 10;
         }
 
-        /* 光标样式 - 更加醒目 */
+        /* 光标样式 */
         #cursor {
             position: absolute;
             top: -100px; left: -100px;
             width: 40px; height: 40px;
-            border: 3px solid rgba(255, 255, 255, 0.8);
+            border: 3px solid rgba(255, 255, 255, 0.9);
             border-radius: 50%;
             pointer-events: none;
             z-index: 50;
             box-shadow: 0 0 15px rgba(255, 215, 0, 0.5), inset 0 0 10px rgba(255, 215, 0, 0.2);
-            transition: transform 0.05s linear, border-color 0.1s, width 0.2s, height 0.2s;
-            mix-blend-mode: difference; /* 让光标在亮背景下也能看清 */
+            transition: transform 0.05s linear; /* 丝滑移动 */
+            mix-blend-mode: difference;
         }
-        /* 光标中心点 */
         #cursor::after {
             content: '';
             position: absolute;
@@ -75,8 +75,30 @@
 
         #ui-layer { display: none; }
         #fullscreen-btn { display: none; }
-        #loading { display: none; }
+        
+        /* 错误提示层 */
+        #error-log {
+            position: absolute;
+            top: 10px; left: 10px;
+            color: red;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            z-index: 100;
+            max-width: 300px;
+            font-size: 12px;
+            display: none;
+        }
     </style>
+    <script>
+        window.onerror = function(msg, url, line) {
+            const errDiv = document.getElementById('error-log');
+            if(errDiv) {
+                errDiv.style.display = 'block';
+                errDiv.innerHTML += `❌ 错误: ${msg}<br>行号: ${line}<br>请检查网络或图片文件名<br><hr>`;
+            }
+            return false;
+        };
+    </script>
     <script type="importmap">
         {
             "imports": {
@@ -87,6 +109,8 @@
     </script>
 </head>
 <body>
+
+    <div id="error-log"></div>
 
     <div id="canvas-wrapper">
         <div id="canvas-container"></div>
@@ -115,13 +139,16 @@
         import { FilesetResolver, HandLandmarker } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0';
 
         // ==========================================
-        // 【照片列表】
+        // 【重要】照片列表
+        // 如果你实际上只有 2 张照片，请把下面没用的删掉
+        // 确保文件名和你 GitHub 上传的一模一样 (注意 .jpg 还是 .JPG)
         // ==========================================
         const PRESET_PHOTOS = [
-            '1.jpg', '2.jpg', '3.jpg', '4.jpg', '5.jpg', 
-            '6.jpg', '7.jpg', '8.jpg', '9.jpg', '10.jpg',
-            '11.jpg', '12.jpg', '13.jpg', '14.jpg', '15.jpg',
-            '16.jpg', '17.jpg', '18.jpg'
+            '1.jpg', 
+            '2.jpg', 
+            '3.jpg', 
+            '4.jpg', 
+            '5.jpg'
         ];
 
         // --- Config ---
@@ -191,58 +218,66 @@
         };
 
         function initThree() {
-            const container = document.getElementById('canvas-container');
-            const wrapper = document.getElementById('canvas-wrapper');
-            
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x020202);
-            scene.fog = new THREE.FogExp2(0x020202, 0.002);
+            try {
+                const container = document.getElementById('canvas-container');
+                const wrapper = document.getElementById('canvas-wrapper');
+                
+                scene = new THREE.Scene();
+                scene.background = new THREE.Color(0x020202);
+                scene.fog = new THREE.FogExp2(0x020202, 0.002);
 
-            updateDimensions();
-            camera = new THREE.PerspectiveCamera(50, wrapper.clientWidth / wrapper.clientHeight, 0.1, 1500);
-            camera.position.set(0, 0, 110);
-            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-            renderer.setSize(wrapper.clientWidth, wrapper.clientHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-            renderer.toneMapping = THREE.ACESFilmicToneMapping;
-            renderer.toneMappingExposure = 1.0;
-            container.appendChild(renderer.domElement);
-            const pmremGenerator = new THREE.PMREMGenerator(renderer);
-            scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+                updateDimensions();
+                camera = new THREE.PerspectiveCamera(50, wrapper.clientWidth / wrapper.clientHeight, 0.1, 1500);
+                camera.position.set(0, 0, 110);
+                renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+                renderer.setSize(wrapper.clientWidth, wrapper.clientHeight);
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+                renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                renderer.toneMappingExposure = 1.0;
+                container.appendChild(renderer.domElement);
+                const pmremGenerator = new THREE.PMREMGenerator(renderer);
+                scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
-            scene.add(ambientLight);
-            const spotLight = new THREE.SpotLight(0xffddaa, 80); 
-            spotLight.position.set(30, 80, 50);
-            spotLight.angle = Math.PI / 4;
-            spotLight.penumbra = 1;
-            spotLight.castShadow = true;
-            scene.add(spotLight);
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+                scene.add(ambientLight);
+                const spotLight = new THREE.SpotLight(0xffddaa, 80); 
+                spotLight.position.set(30, 80, 50);
+                spotLight.angle = Math.PI / 4;
+                spotLight.penumbra = 1;
+                spotLight.castShadow = true;
+                scene.add(spotLight);
 
-            const blueLight = new THREE.PointLight(0x0055ff, 40, 150);
-            blueLight.position.set(-40, -30, 40);
-            scene.add(blueLight);
+                const blueLight = new THREE.PointLight(0x0055ff, 40, 150);
+                blueLight.position.set(-40, -30, 40);
+                scene.add(blueLight);
 
-            // 泛光参数设置
-            const bloomPass = new UnrealBloomPass(new THREE.Vector2(wrapper.clientWidth, wrapper.clientHeight), 1.5, 0.4, 0.85);
-            bloomPass.threshold = 0.8;  
-            bloomPass.strength = 0.2;   
-            bloomPass.radius = 0.5;
-            composer = new EffectComposer(renderer);
-            composer.addPass(new RenderPass(scene, camera));
-            composer.addPass(bloomPass);
+                const bloomPass = new UnrealBloomPass(new THREE.Vector2(wrapper.clientWidth, wrapper.clientHeight), 1.5, 0.4, 0.85);
+                bloomPass.threshold = 0.8;  
+                bloomPass.strength = 0.2;   
+                bloomPass.radius = 0.5;
+                composer = new EffectComposer(renderer);
+                composer.addPass(new RenderPass(scene, camera));
+                composer.addPass(bloomPass);
 
-            createMaterialsAndMeshes();
-            createRibbons();
-            createStarField();
-            createSnow();
-            createSurfaceSnow();
-            
-            updateColorTheme(true);
-            scene.add(mainGroup);
-            window.addEventListener('resize', onWindowResize);
+                createMaterialsAndMeshes();
+                createRibbons();
+                createStarField();
+                createSnow();
+                createSurfaceSnow();
+                
+                updateColorTheme(true);
+                scene.add(mainGroup);
+                window.addEventListener('resize', onWindowResize);
 
-            loadPresetPhotos();
+                loadPresetPhotos();
+
+                // 开始渲染循环
+                animate();
+
+            } catch (e) {
+                console.error(e);
+                alert("3D场景初始化失败: " + e.message);
+            }
         }
 
         function loadPresetPhotos() {
@@ -256,6 +291,7 @@
                 };
                 img.onerror = () => {
                     console.warn(`无法加载照片: ${url}`);
+                    // 不报错，只是控制台警告
                 };
             });
         }
@@ -537,7 +573,7 @@
                 const wrapper = document.getElementById('canvas-wrapper');
                 const x = handPos.x * wrapper.clientWidth;
                 const y = handPos.y * wrapper.clientHeight;
-                cursor.style.transform = `translate(${x - 20}px, ${y - 20}px)`; // Center 40px cursor
+                cursor.style.transform = `translate(${x - 20}px, ${y - 20}px)`; // Center cursor
                 mouseVector.x = (handPos.x * 2) - 1;
                 mouseVector.y = -(handPos.y * 2) + 1;
             } else {
@@ -583,7 +619,7 @@
                     const deltaY = handPos.y - lastHandPos.y;
                     
                     if (Math.abs(deltaX) > 0.001) rotationVelocity.y += deltaX * 0.15;
-                    // 【关键修复】增强上下控制灵敏度
+                    // 【增强】上下旋转灵敏度
                     if (Math.abs(deltaY) > 0.001) rotationVelocity.x += deltaY * 0.20;
                     
                     lastHandPos.x = handPos.x; lastHandPos.y = handPos.y;
@@ -592,8 +628,7 @@
                 rotationVelocity.y *= 0.95;
                 rotationVelocity.x *= 0.95; 
 
-                // 【彻底修复回正问题】移除所有自动回正逻辑
-                // 现在树会停在你旋转到的任何角度，不会自动回正
+                // 【修复】移除自动回正
                 mainGroup.rotation.y += rotationVelocity.y;
                 mainGroup.rotation.x += rotationVelocity.x;
 
@@ -674,17 +709,15 @@
             photoMeshes.forEach((mesh, idx) => {
                 let targetPos, targetScale = 2.0; 
                 if (currentState === STATE.SCATTER) {
-                    // 光标选中变绿，变大
                     if (idx === hoveredPhotoIndex) {
                         targetScale = 5.0; 
-                        mesh.material.color.setHex(0xffffff); // 变亮
-                        document.getElementById('cursor').style.borderColor = '#00ff88'; // 光标变绿提示
+                        mesh.material.color.setHex(0xffffff); 
+                        document.getElementById('cursor').style.borderColor = '#00ff88'; 
                     } else {
-                        // 未选中时
                         targetScale = 2.5;
-                        mesh.material.color.setHex(0x666666); // 默认暗
+                        mesh.material.color.setHex(0x666666); 
                         if(idx !== hoveredPhotoIndex && document.getElementById('cursor').style.borderColor === 'rgb(0, 255, 136)') {
-                            document.getElementById('cursor').style.borderColor = 'rgba(255,255,255,0.8)';
+                            document.getElementById('cursor').style.borderColor = 'rgba(255,255,255,0.9)';
                         }
                     }
                     mesh.lookAt(camera.position); 
@@ -709,22 +742,30 @@
         }
 
         async function setupMediaPipe() {
-            const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm");
-            const handLandmarker = await HandLandmarker.createFromOptions(vision, {
-                baseOptions: {
-                    modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,
-                    delegate: "GPU"
-                },
-                runningMode: "VIDEO", numHands: 1
-            });
-            const video = document.getElementById("input-video");
-            navigator.mediaDevices.getUserMedia({ video: true }).then((stream) => {
-                video.srcObject = stream;
-                video.addEventListener("loadeddata", () => {
-                    document.getElementById('status-text').innerText = "系统就绪，请伸手";
-                    predictWebcam(handLandmarker, video);
+            try {
+                const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm");
+                const handLandmarker = await HandLandmarker.createFromOptions(vision, {
+                    baseOptions: {
+                        modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,
+                        delegate: "GPU"
+                    },
+                    runningMode: "VIDEO", numHands: 1
                 });
-            });
+                const video = document.getElementById("input-video");
+                navigator.mediaDevices.getUserMedia({ video: true }).then((stream) => {
+                    video.srcObject = stream;
+                    video.addEventListener("loadeddata", () => {
+                        document.getElementById('status-text').innerText = "系统就绪，请伸手";
+                        predictWebcam(handLandmarker, video);
+                    });
+                }).catch(err => {
+                    alert("无法获取摄像头权限: " + err);
+                });
+            } catch (err) {
+                console.error("MediaPipe Init Error:", err);
+                // 这里加个中文提示，因为国内网络经常加载失败
+                alert("AI模型加载失败，可能是网络问题 (Google服务被墙)。建议开启VPN或代理。");
+            }
         }
 
         let lastVideoTime = -1;
@@ -732,15 +773,10 @@
             if (video.currentTime !== lastVideoTime) {
                 lastVideoTime = video.currentTime;
                 const result = handLandmarker.detectForVideo(video, performance.now());
-                const canvas = document.getElementById('skeleton-canvas');
-                const ctx = canvas.getContext('2d');
-                canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+                
                 if (result.landmarks && result.landmarks.length > 0) {
                     const landmarks = result.landmarks[0];
                     isHandPresent = true;
-                    // drawSkeleton(ctx, landmarks, canvas.width, canvas.height);
                     handleGesture(landmarks);
                 } else { isHandPresent = false;
                 }
@@ -748,26 +784,9 @@
             requestAnimationFrame(() => predictWebcam(handLandmarker, video));
         }
         
-        function drawSkeleton(ctx, landmarks, w, h) {
-            ctx.lineWidth = 3;
-            ctx.strokeStyle = '#00ff88'; ctx.fillStyle = '#ff0044';
-            const connections = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
-            ctx.beginPath();
-            for (let i = 0; i < connections.length; i++) {
-                const start = landmarks[connections[i][0]], end = landmarks[connections[i][1]];
-                ctx.moveTo(start.x * w, start.y * h); ctx.lineTo(end.x * w, end.y * h);
-            }
-            ctx.stroke();
-            for(let i=0; i<landmarks.length; i++) {
-                ctx.beginPath();
-                ctx.arc(landmarks[i].x * w, landmarks[i].y * h, 4, 0, 2 * Math.PI); ctx.fill();
-            }
-        }
-
         function handleGesture(landmarks) {
             const wrist = landmarks[0];
-            // 【关键修复】扩大边缘保护区：屏幕边缘 15% 区域不响应手势
-            // 这样手移出屏幕时绝对不会触发“握拳”
+            // 【关键】扩大边缘保护区：屏幕边缘 15% 区域不响应手势
             if (wrist.x < 0.15 || wrist.x > 0.85 || wrist.y < 0.15 || wrist.y > 0.85) return;
 
             const palmX = 1 - (landmarks[0].x + landmarks[9].x) / 2;
@@ -782,10 +801,9 @@
                 const d = Math.sqrt(Math.pow(tip.x-base.x,2) + Math.pow(tip.y-base.y,2));
                 if(d < 0.30) folded++; 
             });
-            // 【关键修复】判定更严格：必须5指全弯才算拳头
+            // 【关键】严格判定：必须5指全弯才算拳头
             const isFist = folded >= 5; 
             
-            // 捏合判定 (食指和拇指)
             const dPinch = Math.sqrt(Math.pow(landmarks[4].x-landmarks[8].x,2) + Math.pow(landmarks[4].y-landmarks[8].y,2));
             const isPinch = dPinch < 0.08; 
             
@@ -797,12 +815,10 @@
                     currentState = STATE.ZOOM;
                     status.innerHTML = "状态: <span style='color:#ffd700'>抓取照片</span>";
                     
-                    // 【关键修复】只抓取光标选中的照片，如果没有选中，不做任何操作！
-                    // 彻底删除了“选最近照片”的备用逻辑
+                    // 【关键】只抓取光标选中的照片
                     if (hoveredPhotoIndex !== -1) {
                         zoomTargetIndex = hoveredPhotoIndex;
                     } 
-                    // 如果 zoomTargetIndex 是 -1，什么都不会发生，直到你对准为止
                 }
             } else if (isFist) {
                 if (currentState !== STATE.TREE) {
@@ -871,8 +887,9 @@
             mainGroup.add(mesh);
         }
 
+        // 启动主程序
         initThree();
-        animate();
+        // 启动手势识别
         setupMediaPipe();
     </script>
 </body>
