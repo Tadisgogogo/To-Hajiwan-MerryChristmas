@@ -49,26 +49,26 @@
             z-index: 10;
         }
 
-        /* 【新增】屏幕中心的光标 */
+        /* 光标样式 */
         #cursor {
             position: absolute;
-            top: 50%; left: 50%;
-            width: 40px; height: 40px;
-            transform: translate(-50%, -50%);
+            top: -100px; left: -100px;
+            width: 30px; height: 30px;
+            border: 2px solid #fff;
+            border-radius: 50%;
             pointer-events: none;
             z-index: 50;
-        }
-        #cursor::before, #cursor::after {
-            content: '';
-            position: absolute;
-            background: rgba(255, 255, 255, 0.8);
-            box-shadow: 0 0 4px #ffd700;
-        }
-        #cursor::before {
-            top: 19px; left: 0; width: 40px; height: 2px;
+            box-shadow: 0 0 10px #ffd700, inset 0 0 5px #ffd700;
+            transition: transform 0.1s, width 0.2s, height 0.2s, border-color 0.2s;
         }
         #cursor::after {
-            top: 0; left: 19px; width: 2px; height: 40px;
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 4px; height: 4px;
+            background: #ffd700;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
         }
 
         #ui-layer { display: none; }
@@ -113,7 +113,7 @@
         import { FilesetResolver, HandLandmarker } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0';
 
         // ==========================================
-        // 【重要】照片列表
+        // 照片列表
         // ==========================================
         const PRESET_PHOTOS = [
             '1.jpg', '2.jpg', '3.jpg', '4.jpg', '5.jpg', 
@@ -156,10 +156,10 @@
         let photoMeshes = [];
         let zoomTargetIndex = -1;
         
-        // 【新增】射线检测变量
+        // 射线检测变量
         const raycaster = new THREE.Raycaster();
-        const centerPointer = new THREE.Vector2(0, 0); // 屏幕中心
-        let hoveredPhotoIndex = -1; // 当前准星对准的照片索引
+        const mouseVector = new THREE.Vector2(-99, -99); 
+        let hoveredPhotoIndex = -1; 
 
         // Ribbon Data
         let ribbonMesh;
@@ -179,8 +179,8 @@
         const dummy = new THREE.Object3D();
         let time = 0;
         
-        let handPos = { x: 0, y: 0 };
-        let lastHandPos = { x: 0, y: 0 };
+        let handPos = { x: 0.5, y: 0.5 }; 
+        let lastHandPos = { x: 0.5, y: 0.5 };
         let isHandPresent = false;
         let rotationVelocity = { x: 0, y: 0 };
 
@@ -210,21 +210,21 @@
 
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
             scene.add(ambientLight);
-            const spotLight = new THREE.SpotLight(0xffddaa, 100);
+            const spotLight = new THREE.SpotLight(0xffddaa, 80); 
             spotLight.position.set(30, 80, 50);
             spotLight.angle = Math.PI / 4;
             spotLight.penumbra = 1;
             spotLight.castShadow = true;
             scene.add(spotLight);
 
-            const blueLight = new THREE.PointLight(0x0055ff, 50, 150);
+            const blueLight = new THREE.PointLight(0x0055ff, 40, 150);
             blueLight.position.set(-40, -30, 40);
             scene.add(blueLight);
 
             const bloomPass = new UnrealBloomPass(new THREE.Vector2(wrapper.clientWidth, wrapper.clientHeight), 1.5, 0.4, 0.85);
-            bloomPass.threshold = 0.6; 
-            bloomPass.strength = 1.0;
-            bloomPass.radius = 0.8;
+            bloomPass.threshold = 0.8;  
+            bloomPass.strength = 0.2;   
+            bloomPass.radius = 0.5;
             composer = new EffectComposer(renderer);
             composer.addPass(new RenderPass(scene, camera));
             composer.addPass(bloomPass);
@@ -738,6 +738,19 @@
             requestAnimationFrame(animate);
             time += 0.01;
 
+            const cursor = document.getElementById('cursor');
+            if (isHandPresent) {
+                const wrapper = document.getElementById('canvas-wrapper');
+                const x = handPos.x * wrapper.clientWidth;
+                const y = handPos.y * wrapper.clientHeight;
+                cursor.style.transform = `translate(${x - 15}px, ${y - 15}px)`; 
+                mouseVector.x = (handPos.x * 2) - 1;
+                mouseVector.y = -(handPos.y * 2) + 1;
+            } else {
+                 cursor.style.transform = `translate(-100px, -100px)`;
+                 mouseVector.set(-99, -99);
+            }
+
             updateColorTheme();
             updateInstancedMesh(goldSphereMesh, logicData.gold);
             updateInstancedMesh(heartMesh, logicData.heart);
@@ -751,7 +764,7 @@
             updateRibbons();
             updateSnow();
             updateSurfaceSnow();
-            updateRaycaster(); // 【新增】更新射线检测
+            updateRaycaster(); 
 
             if (logicData.star) {
                 let target = currentState === STATE.TREE ?
@@ -774,16 +787,19 @@
                 if (isHandPresent) {
                     const deltaX = handPos.x - lastHandPos.x;
                     const deltaY = handPos.y - lastHandPos.y;
-                    if (deltaX > 0.002) rotationVelocity.y += deltaX * 0.15;
-                    if (Math.abs(deltaY) > 0.002) rotationVelocity.x += deltaY * 0.05;
+                    
+                    if (Math.abs(deltaX) > 0.001) rotationVelocity.y += deltaX * 0.15;
+                    if (Math.abs(deltaY) > 0.001) rotationVelocity.x += deltaY * 0.15;
+                    
                     lastHandPos.x = handPos.x; lastHandPos.y = handPos.y;
                 }
-                rotationVelocity.y = Math.min(rotationVelocity.y, 0.05);
-                rotationVelocity.x = Math.max(Math.min(rotationVelocity.x, 0.02), -0.02);
+                
+                rotationVelocity.y *= 0.95;
+                rotationVelocity.x *= 0.95; 
+
                 mainGroup.rotation.y += rotationVelocity.y;
                 mainGroup.rotation.x += rotationVelocity.x;
-                rotationVelocity.y *= 0.96; rotationVelocity.x *= 0.92; 
-                mainGroup.rotation.x *= 0.98;
+
             } else if (currentState === STATE.TREE) {
                 mainGroup.rotation.y += 0.002;
                 mainGroup.rotation.x *= 0.95;
@@ -791,13 +807,12 @@
             composer.render();
         }
 
-        // 【新增】更新射线检测，寻找屏幕中心对准的照片
         function updateRaycaster() {
             if (currentState !== STATE.SCATTER) {
                 hoveredPhotoIndex = -1;
                 return;
             }
-            raycaster.setFromCamera(centerPointer, camera);
+            raycaster.setFromCamera(mouseVector, camera);
             const intersects = raycaster.intersectObjects(photoMeshes);
             if (intersects.length > 0) {
                 const hit = intersects[0].object;
@@ -862,13 +877,16 @@
             photoMeshes.forEach((mesh, idx) => {
                 let targetPos, targetScale = 2.0; 
                 if (currentState === STATE.SCATTER) {
-                    // 【修改】如果被准星对准，稍微放大并增亮
+                    // 如果被光标对准，放大并增亮
                     if (idx === hoveredPhotoIndex) {
                         targetScale = 5.0; 
                         mesh.material.color.setHex(0xffffff); // 变亮
+                        document.getElementById('cursor').style.borderColor = '#00ff88'; // 光标变色提示
                     } else {
-                        targetScale = 4.0;
-                        mesh.material.color.setHex(0x888888); // 恢复灰色
+                        // 【修改】未选中时缩小到 2.5
+                        targetScale = 2.5;
+                        mesh.material.color.setHex(0x666666); // 默认更暗
+                        if(idx !== hoveredPhotoIndex) document.getElementById('cursor').style.borderColor = '#fff';
                     }
                     mesh.lookAt(camera.position); 
                 }
@@ -876,13 +894,14 @@
                     const targetWorldPos = new THREE.Vector3(0, 0, 80); 
                     targetPos = mainGroup.worldToLocal(targetWorldPos);
                     targetScale = 5.0; 
-                    mesh.material.color.setHex(0xffffff);
+                    mesh.material.color.setHex(0xffffff); // 选中时恢复亮度
                     mesh.lookAt(camera.position); 
                 } else {
                     targetPos = currentState === STATE.TREE ? mesh.userData.treePos : mesh.userData.scatterPos;
                     if(currentState !== STATE.TREE) mesh.position.y += Math.sin(time+idx)*0.01;
                     if (currentState === STATE.TREE) {
                        mesh.rotation.y += 0.01;
+                       mesh.material.color.setHex(0x888888);
                     }
                 }
                 mesh.position.lerp(targetPos, 0.1);
@@ -947,8 +966,8 @@
         }
 
         function handleGesture(landmarks) {
-            // 【新增】边缘保护：如果手腕在屏幕边缘 5% 范围内，直接忽略（防止手移出屏幕时的误识别）
             const wrist = landmarks[0];
+            // 边缘保护
             if (wrist.x < 0.05 || wrist.x > 0.95 || wrist.y < 0.05 || wrist.y > 0.95) return;
 
             const palmX = 1 - (landmarks[0].x + landmarks[9].x) / 2;
@@ -971,11 +990,9 @@
                     currentState = STATE.ZOOM;
                     status.innerHTML = "状态: <span style='color:#ffd700'>抓取照片</span>";
                     
-                    // 【修改】优先抓取光标对准的照片，如果没有对准，则不进行操作（或保持原逻辑）
                     if (hoveredPhotoIndex !== -1) {
                         zoomTargetIndex = hoveredPhotoIndex;
                     } else if (zoomTargetIndex === -1) {
-                        // 备用：如果没有对准任何照片，就抓距离最近的
                         let minDist = Infinity, bestIdx = 0;
                         photoMeshes.forEach((mesh, idx) => {
                             const d = mesh.getWorldPosition(new THREE.Vector3()).distanceTo(camera.position);
@@ -1030,10 +1047,9 @@
             tex.needsUpdate = true; tex.colorSpace = THREE.SRGBColorSpace;
             let w = 4, h = 4;
             if(img.width > img.height) h = 4 * (img.height/img.width); else w = 4 * (img.width/img.height);
-            // 降低照片亮度，使用灰色(0x888888)防止过曝
             const mesh = new THREE.Mesh(
                 new THREE.PlaneGeometry(w, h),
-                new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, color: 0x888888 })
+                new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, color: 0x666666 })
             );
             const frame = new THREE.Mesh(new THREE.BoxGeometry(w+0.2, h+0.2, 0.1), new THREE.MeshPhysicalMaterial({color:0xffd700, roughness:0.2, metalness:1}));
             frame.position.z = -0.06; mesh.add(frame);
