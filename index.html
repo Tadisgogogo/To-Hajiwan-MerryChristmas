@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jewel Christmas Tree - Debug Version</title>
+    <title>Grand Jewel Tree - Ultimate</title>
     <style>
         body { 
             margin: 0;
@@ -14,89 +14,61 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
-            color: #fff;
+            color: white;
         }
 
         #canvas-wrapper {
             position: relative;
             box-shadow: 0 0 50px rgba(255, 215, 0, 0.1);
             background: #000;
+            width: 100%; height: 100%;
         }
 
-        #canvas-container { 
-            width: 100%;
-            height: 100%; 
-            display: block;
-        }
+        #canvas-container { width: 100%; height: 100%; display: block; }
         
         #video-container {
-            position: absolute;
-            top: 20px; right: 20px; width: 160px; height: 120px; z-index: 2;
+            position: absolute; top: 20px; right: 20px; width: 160px; height: 120px; z-index: 2;
             border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 8px;
-            overflow: hidden;
-            transform: scaleX(-1); 
-            background: rgba(0,0,0,0.5);
-            transition: opacity 0.5s;
-            opacity: 0.6;
+            overflow: hidden; transform: scaleX(-1); 
+            background: rgba(0,0,0,0.5); opacity: 0.6;
         }
-        #input-video { 
-            width: 100%;
-            height: 100%; object-fit: cover; opacity: 0.8; 
-            position: absolute; top: 0; left: 0;
-        }
-        #skeleton-canvas {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 10;
-        }
+        #input-video { width: 100%; height: 100%; object-fit: cover; opacity: 0.8; }
 
-        /* 光标样式 */
+        /* 光标样式 - 视觉核心 */
         #cursor {
-            position: absolute;
-            top: -100px; left: -100px;
+            position: absolute; top: -100px; left: -100px;
             width: 40px; height: 40px;
             border: 3px solid rgba(255, 255, 255, 0.9);
             border-radius: 50%;
-            pointer-events: none;
-            z-index: 50;
+            pointer-events: none; z-index: 50;
             box-shadow: 0 0 15px rgba(255, 215, 0, 0.5), inset 0 0 10px rgba(255, 215, 0, 0.2);
-            transition: transform 0.05s linear; /* 丝滑移动 */
+            transition: transform 0.05s linear, border-color 0.1s;
             mix-blend-mode: difference;
         }
         #cursor::after {
-            content: '';
-            position: absolute;
-            top: 50%; left: 50%;
-            width: 6px; height: 6px;
-            background: #ffd700;
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
+            content: ''; position: absolute; top: 50%; left: 50%;
+            width: 6px; height: 6px; background: #ffd700;
+            border-radius: 50%; transform: translate(-50%, -50%);
         }
 
-        #ui-layer { display: none; }
-        #fullscreen-btn { display: none; }
-        
-        /* 错误提示层 */
-        #error-log {
-            position: absolute;
-            top: 10px; left: 10px;
-            color: red;
-            background: rgba(0,0,0,0.8);
-            padding: 10px;
-            z-index: 100;
-            max-width: 300px;
-            font-size: 12px;
-            display: none;
+        /* 状态与调试信息 */
+        #status-panel {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(0, 0, 0, 0.6); padding: 10px 15px;
+            border-radius: 8px; border-left: 4px solid #ffd700;
+            font-size: 14px; pointer-events: none; z-index: 100;
+        }
+        .loading-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 999;
+            display: flex; justify-content: center; align-items: center;
+            transition: opacity 1s;
         }
     </style>
     <script>
         window.onerror = function(msg, url, line) {
-            const errDiv = document.getElementById('error-log');
-            if(errDiv) {
-                errDiv.style.display = 'block';
-                errDiv.innerHTML += `❌ 错误: ${msg}<br>行号: ${line}<br>请检查网络或图片文件名<br><hr>`;
-            }
-            return false;
+            const panel = document.getElementById('status-panel');
+            if(panel) panel.innerHTML = `<span style="color:red">⚠️ 错误: ${msg} (行:${line})</span>`;
         };
     </script>
     <script type="importmap">
@@ -110,24 +82,19 @@
 </head>
 <body>
 
-    <div id="error-log"></div>
+    <div class="loading-overlay" id="loading-mask">
+        <h2>🎄 正在构建奢华圣诞树...</h2>
+    </div>
+
+    <div id="status-panel">系统初始化中...</div>
 
     <div id="canvas-wrapper">
-        <div id="canvas-container"></div>
-        
         <div id="cursor"></div>
-
+        <div id="canvas-container"></div>
         <div id="video-container">
             <video id="input-video" autoplay playsinline muted></video>
-            <canvas id="skeleton-canvas"></canvas>
         </div>
-        <button id="fullscreen-btn" onclick="toggleUI()">⛶</button>
-        <div id="ui-layer">
-            <div id="status-text">系统初始化...</div>
-            <div class="instructions"></div>
-            <button id="upload-btn">上传照片</button>
-            <input type="file" id="file-input" multiple accept="image/*">
-        </div>
+        <input type="file" id="file-input" multiple accept="image/*" style="display:none">
     </div>
 
     <script type="module">
@@ -139,19 +106,14 @@
         import { FilesetResolver, HandLandmarker } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0';
 
         // ==========================================
-        // 【重要】照片列表
-        // 如果你实际上只有 2 张照片，请把下面没用的删掉
-        // 确保文件名和你 GitHub 上传的一模一样 (注意 .jpg 还是 .JPG)
+        // 【照片配置】请确保这里的文件名与GitHub一致
         // ==========================================
         const PRESET_PHOTOS = [
-            '1.jpg', 
-            '2.jpg', 
-            '3.jpg', 
-            '4.jpg', 
-            '5.jpg'
+            '1.jpg', '2.jpg', '3.jpg', '4.jpg', '5.jpg'
+            // 如果你有更多，请继续添加，例如 '6.jpg', '7.jpg'
         ];
 
-        // --- Config ---
+        // --- 奢华版配置 (保持高画质) ---
         const CONFIG = {
             goldCount: 750,        
             emeraldBoxCount: 580,  
@@ -185,18 +147,16 @@
         let photoMeshes = [];
         let zoomTargetIndex = -1;
         
-        // 射线检测变量
+        // 射线检测
         const raycaster = new THREE.Raycaster();
         const mouseVector = new THREE.Vector2(-99, -99); 
         let hoveredPhotoIndex = -1; 
 
-        // Ribbon Data
+        // 丝带
         let ribbonMesh;
         const RIBBON_COUNT = 12; 
         const RIBBON_SEGMENTS = 600;
         const ribbonsData = [];
-        
-        // --- 显隐控制变量 ---
         let ribbonFade = 0;
         let ribbonScatterScale = 0; 
 
@@ -208,15 +168,21 @@
         const dummy = new THREE.Object3D();
         let time = 0;
         
+        // 手势相关
         let handPos = { x: 0.5, y: 0.5 }; 
         let lastHandPos = { x: 0.5, y: 0.5 };
         let isHandPresent = false;
         let rotationVelocity = { x: 0, y: 0 };
 
-        window.toggleUI = function() {
-            document.getElementById('canvas-wrapper').classList.toggle('hide-ui');
-        };
+        function updateStatus(text, color='#fff') {
+            const el = document.getElementById('status-panel');
+            if(el) {
+                el.innerText = text;
+                el.style.color = color;
+            }
+        }
 
+        // === 初始化 3D 场景 (优先执行，防止黑屏) ===
         function initThree() {
             try {
                 const container = document.getElementById('canvas-container');
@@ -226,18 +192,20 @@
                 scene.background = new THREE.Color(0x020202);
                 scene.fog = new THREE.FogExp2(0x020202, 0.002);
 
-                updateDimensions();
                 camera = new THREE.PerspectiveCamera(50, wrapper.clientWidth / wrapper.clientHeight, 0.1, 1500);
                 camera.position.set(0, 0, 110);
+                
                 renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
                 renderer.setSize(wrapper.clientWidth, wrapper.clientHeight);
                 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
                 renderer.toneMapping = THREE.ACESFilmicToneMapping;
                 renderer.toneMappingExposure = 1.0;
                 container.appendChild(renderer.domElement);
+
                 const pmremGenerator = new THREE.PMREMGenerator(renderer);
                 scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
 
+                // 灯光系统
                 const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
                 scene.add(ambientLight);
                 const spotLight = new THREE.SpotLight(0xffddaa, 80); 
@@ -251,9 +219,10 @@
                 blueLight.position.set(-40, -30, 40);
                 scene.add(blueLight);
 
+                // 泛光特效 (Bloom) - 参数已调优防止过曝
                 const bloomPass = new UnrealBloomPass(new THREE.Vector2(wrapper.clientWidth, wrapper.clientHeight), 1.5, 0.4, 0.85);
-                bloomPass.threshold = 0.8;  
-                bloomPass.strength = 0.2;   
+                bloomPass.threshold = 0.85; // 只有非常亮的部分才发光
+                bloomPass.strength = 0.3;   // 柔和光感
                 bloomPass.radius = 0.5;
                 composer = new EffectComposer(renderer);
                 composer.addPass(new RenderPass(scene, camera));
@@ -269,14 +238,24 @@
                 scene.add(mainGroup);
                 window.addEventListener('resize', onWindowResize);
 
+                // 加载照片
                 loadPresetPhotos();
 
-                // 开始渲染循环
+                // 移除遮罩
+                const mask = document.getElementById('loading-mask');
+                mask.style.opacity = 0;
+                setTimeout(() => mask.style.display = 'none', 1000);
+                
+                // 启动渲染循环
                 animate();
+                
+                // 3D 成功后再启动 AI，这样就算 AI 挂了，树也能看
+                updateStatus("正在加载手势识别 AI...");
+                setupMediaPipe();
 
             } catch (e) {
                 console.error(e);
-                alert("3D场景初始化失败: " + e.message);
+                updateStatus("3D场景初始化错误: " + e.message, "red");
             }
         }
 
@@ -291,28 +270,8 @@
                 };
                 img.onerror = () => {
                     console.warn(`无法加载照片: ${url}`);
-                    // 不报错，只是控制台警告
                 };
             });
-        }
-
-        function updateDimensions() {
-            const targetAspect = 4 / 3;
-            const windowAspect = window.innerWidth / window.innerHeight;
-            let width, height;
-
-            if (windowAspect > targetAspect) {
-                height = window.innerHeight;
-                width = height * targetAspect;
-            } else {
-                width = window.innerWidth;
-                height = width / targetAspect;
-            }
-
-            const wrapper = document.getElementById('canvas-wrapper');
-            wrapper.style.width = width + 'px';
-            wrapper.style.height = height + 'px';
-            return { width, height };
         }
 
         function createStripeTexture() {
@@ -397,10 +356,7 @@
                 const cpR = r + 0.05; 
                 smallStarShape.quadraticCurveTo(Math.cos(cpAngle)*cpR, Math.sin(cpAngle)*cpR, x, y);
             }
-            
-            const smallStarGeo = new THREE.ExtrudeGeometry(smallStarShape, { 
-                depth: 0.3, bevelEnabled: true, bevelThickness: 0.15, bevelSize: 0.1, bevelSegments: 6      
-            });
+            const smallStarGeo = new THREE.ExtrudeGeometry(smallStarShape, { depth: 0.3, bevelEnabled: true, bevelThickness: 0.15, bevelSize: 0.1, bevelSegments: 6 });
             smallStarGeo.center();
 
             const path = new THREE.CatmullRomCurve3([
@@ -434,12 +390,13 @@
             const bigStarShape = new THREE.Shape();
             const bigOuterR = 4.5; const bigInnerR = 2.4; 
             bigStarShape.moveTo(0, bigOuterR);
-            for(let i = 1; i <= numPoints * 2; i++) {
-                const angle = (i / (numPoints * 2)) * Math.PI * 2 + Math.PI / 2;
+            const numPointsBig = 5;
+            for(let i = 1; i <= numPointsBig * 2; i++) {
+                const angle = (i / (numPointsBig * 2)) * Math.PI * 2 + Math.PI / 2;
                 const r = (i % 2 === 0) ? bigOuterR : bigInnerR;
                 const x = Math.cos(angle) * r;
                 const y = Math.sin(angle) * r;
-                const cpAngle = angle - (Math.PI / (numPoints * 2)) * 0.5;
+                const cpAngle = angle - (Math.PI / (numPointsBig * 2)) * 0.5;
                 const cpR = r + 0.2; 
                 bigStarShape.quadraticCurveTo(Math.cos(cpAngle)*cpR, Math.sin(cpAngle)*cpR, x, y);
             }
@@ -489,29 +446,19 @@
                 let colorNormal = new THREE.Color();
                 let colorPink = new THREE.Color();
                 
-                if (type === 'emerald') { 
-                    colorNormal.setHex(0x00d060); colorPink.setHex(0xffdde5);   
-                } else if (type === 'tetra') { 
-                    colorNormal.setHex(0x00d060); colorPink.setHex(0xe6e6fa);   
-                } else if (type === 'sphere') { 
-                    colorNormal.setHex(0xffd700); colorPink.setHex(0xffb6c1);   
-                } else if (type === 'gold_shape') { 
-                    colorNormal.setHex(0xffd700); colorPink.setHex(0xffe6ea);   
-                } else if (type === 'heart') { 
-                    colorNormal.setHex(0xff3300); colorPink.setHex(0xff69b4);   
-                } else {
-                     colorNormal.setHex(0xffffff); colorPink.setHex(0xffe4e1);
-                }
+                if (type === 'emerald') { colorNormal.setHex(0x00d060); colorPink.setHex(0xffdde5); } 
+                else if (type === 'tetra') { colorNormal.setHex(0x00d060); colorPink.setHex(0xe6e6fa); } 
+                else if (type === 'sphere') { colorNormal.setHex(0xffd700); colorPink.setHex(0xffb6c1); } 
+                else if (type === 'gold_shape') { colorNormal.setHex(0xffd700); colorPink.setHex(0xffe6ea); } 
+                else if (type === 'heart') { colorNormal.setHex(0xff3300); colorPink.setHex(0xff69b4); } 
+                else { colorNormal.setHex(0xffffff); colorPink.setHex(0xffe4e1); }
 
                 array.push({
-                    treePos: treePos,
-                    scatterPos: scatterPos,
-                    currentPos: treePos.clone(),
+                    treePos: treePos, scatterPos: scatterPos, currentPos: treePos.clone(),
                     scale: 0.5 + Math.random() * 0.8,
                     rotSpeed: new THREE.Euler(Math.random()*0.02, Math.random()*0.02, Math.random()*0.02),
                     rotation: new THREE.Euler(Math.random()*Math.PI, Math.random()*Math.PI, 0),
-                    colorNormal: colorNormal,
-                    colorPink: colorPink
+                    colorNormal: colorNormal, colorPink: colorPink
                 });
             }
         }
@@ -519,9 +466,7 @@
         function createSurfaceSnow() {
             const count = 800;
             const geo = new THREE.BufferGeometry();
-            const pos = [];
-            const origins = [];
-
+            const pos = []; const origins = [];
             for(let i=0; i<count; i++) {
                 const u = Math.random();
                 const hNorm = 1 - Math.pow(u, 0.55);
@@ -530,19 +475,15 @@
                 const rMax = CONFIG.baseRadius * Math.pow(yRatio, 1.5);
                 const r = rMax + 2.0 + Math.random() * 4.0;
                 const theta = Math.random() * Math.PI * 2;
-                
-                const x = r * Math.cos(theta);
-                const z = r * Math.sin(theta);
-                pos.push(x, h, z);
-                origins.push(x, h, z);
+                const x = r * Math.cos(theta); const z = r * Math.sin(theta);
+                pos.push(x, h, z); origins.push(x, h, z);
             }
             geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
             geo.userData = { origins: new Float32Array(origins) };
             const mat = new THREE.PointsMaterial({
                 color: 0xffffff, size: 0.8,
                 map: new THREE.TextureLoader().load('https://threejs.org/examples/textures/sprites/snowflake2.png'),
-                transparent: true, opacity: 0.0, 
-                depthWrite: false, blending: THREE.AdditiveBlending
+                transparent: true, opacity: 0.0, depthWrite: false, blending: THREE.AdditiveBlending
             });
             surfaceSnowParticles = new THREE.Points(geo, mat);
             mainGroup.add(surfaceSnowParticles);
@@ -551,7 +492,6 @@
         function updateSurfaceSnow() {
             const targetOpacity = 0.8 * (1.0 - ribbonScatterScale);
             surfaceSnowParticles.material.opacity = targetOpacity;
-            
             if (targetOpacity < 0.01) return;
             const positions = surfaceSnowParticles.geometry.attributes.position.array;
             const origins = surfaceSnowParticles.geometry.userData.origins;
@@ -564,6 +504,137 @@
             surfaceSnowParticles.geometry.attributes.position.needsUpdate = true;
         }
 
+        function updateColorTheme(force = false) {
+            const target = isPinkTheme ? 1.0 : 0.0;
+            if (Math.abs(themeProgress - target) > 0.001 || force) {
+                themeProgress += (target - themeProgress) * 0.05;
+                if(force) themeProgress = target;
+                applyColorToMesh(goldSphereMesh, logicData.gold);
+                goldSphereMesh.material.metalness = THREE.MathUtils.lerp(1.0, 0.0, themeProgress);
+                const goldEmit = new THREE.Color(0xffcc00); const pinkEmit = new THREE.Color(0xffb6c1); 
+                goldSphereMesh.material.emissive.lerpColors(goldEmit, pinkEmit, themeProgress);
+                applyColorToMesh(emeraldBoxMesh, logicData.emeraldBox);
+                applyColorToMesh(emeraldTetraMesh, logicData.emeraldTetra);
+                applyColorToMesh(goldShapeMesh[0], logicData.torus);
+                applyColorToMesh(goldShapeMesh[1], logicData.smallStar);
+                applyColorToMesh(heartMesh, logicData.heart);
+            }
+        }
+
+        function applyColorToMesh(mesh, data) {
+            const tempC = new THREE.Color();
+            for(let i=0; i<data.length; i++) {
+                const item = data[i];
+                tempC.lerpColors(item.colorNormal, item.colorPink, themeProgress);
+                mesh.setColorAt(i, tempC);
+            }
+            mesh.instanceColor.needsUpdate = true;
+        }
+
+        function createRibbons() {
+            for(let i=0; i<RIBBON_COUNT; i++) {
+                const points = [];
+                const startAngle = Math.random() * Math.PI * 2;
+                const spiralFreq = 3.0 + Math.random() * 2.0;
+                const hStart = -(CONFIG.treeHeight / 2) - 5; const hEnd = (CONFIG.treeHeight / 2);
+                for(let t=0; t<=1; t+=0.005) { 
+                    const h = hStart + t * (hEnd - hStart); const yRatio = 1.0 - t; 
+                    const trumpetCurve = Math.pow(yRatio, 1.4); 
+                    const rBase = (CONFIG.baseRadius * trumpetCurve) + 2.0;
+                    const theta = t * Math.PI * spiralFreq + startAngle; 
+                    const x = Math.cos(theta) * rBase; const z = Math.sin(theta) * rBase;
+                    points.push(new THREE.Vector3(x, h, z));
+                }
+                const curve = new THREE.CatmullRomCurve3(points);
+                ribbonsData.push({ curve: curve, progress: Math.random(), speed: 0.0020 + Math.random() * 0.0005, lengthScale: 0.8 + Math.random() * 0.4 });
+            }
+            const ribbonGeo = new THREE.BoxGeometry(0.6, 0.1, 4.5);
+            const ribbonMat = new THREE.MeshPhysicalMaterial({
+                color: 0xffcc00, metalness: 0.1, roughness: 0.2, emissive: 0xffaa00, 
+                emissiveIntensity: 0.4, transparent: true, opacity: 0.5, side: THREE.DoubleSide
+            });
+            ribbonMesh = new THREE.InstancedMesh(ribbonGeo, ribbonMat, RIBBON_COUNT * RIBBON_SEGMENTS);
+            mainGroup.add(ribbonMesh);
+        }
+
+        function updateRibbons() {
+            const ribbonNormal = new THREE.Color(0xffcc00); const ribbonPink = new THREE.Color(0xffb7c5); 
+            const emitNormal = new THREE.Color(0xffaa00); const emitPink = new THREE.Color(0xff69b4); 
+            ribbonMesh.material.color.lerpColors(ribbonNormal, ribbonPink, themeProgress);
+            ribbonMesh.material.emissive.lerpColors(emitNormal, emitPink, themeProgress);
+            
+            const targetScale = (currentState === STATE.TREE) ? 0 : 1;
+            ribbonScatterScale = THREE.MathUtils.lerp(ribbonScatterScale, targetScale, 0.05);
+            if (currentState !== STATE.TREE && ribbonScatterScale > 0.99) { ribbonMesh.visible = false; return; }
+            ribbonMesh.visible = true;
+            ribbonFade = (currentState === STATE.TREE) ? THREE.MathUtils.lerp(ribbonFade, 0.5, 0.05) : THREE.MathUtils.lerp(ribbonFade, 0, 0.1);
+            ribbonMesh.material.opacity = ribbonFade;
+            
+            let instanceIdx = 0;
+            ribbonsData.forEach((data, ribbonIdx) => {
+                data.progress += data.speed;
+                for(let j=0; j<RIBBON_SEGMENTS; j++) {
+                    const lag = j * 0.0005 * data.lengthScale; 
+                    let tRaw = (data.progress - lag) % 1.0; if (tRaw < 0) tRaw += 1.0; 
+                    let s = 1.0; const edgeThreshold = 0.15; 
+                    if (tRaw < edgeThreshold) s = tRaw / edgeThreshold; 
+                    else if (tRaw > (1.0 - edgeThreshold)) s = (1.0 - tRaw) / edgeThreshold;
+                    s *= (0.8 + 0.2 * Math.sin(time * 2 + ribbonIdx));
+                    const pos = data.curve.getPoint(tRaw); const tangent = data.curve.getTangent(tRaw);
+                    const dir = pos.clone().setY(0).normalize(); const spread = ribbonScatterScale * 50.0;
+                    dummy.position.copy(pos).add(dir.multiplyScalar(spread));
+                    if(ribbonScatterScale > 0.1) dummy.position.y += Math.sin(time*5+ribbonIdx)*ribbonScatterScale*5;
+                    dummy.lookAt(dummy.position.clone().add(tangent)); dummy.rotateZ(ribbonIdx * 0.1); 
+                    dummy.scale.set(s, 1, s); dummy.updateMatrix();
+                    ribbonMesh.setMatrixAt(instanceIdx++, dummy.matrix);
+                }
+            });
+            ribbonMesh.instanceMatrix.needsUpdate = true;
+        }
+
+        function randomSpherePoint(r) {
+            const u = Math.random(), v = Math.random();
+            const theta = 2 * Math.PI * u, phi = Math.acos(2 * v - 1);
+            return new THREE.Vector3(r * Math.sin(phi) * Math.cos(theta), r * Math.sin(phi) * Math.sin(theta), r * Math.cos(phi));
+        }
+        
+        function createStarField() {
+            const geo = new THREE.BufferGeometry(); const pos = [];
+            for(let i=0; i<1500; i++) pos.push((Math.random()-0.5)*1500, (Math.random()-0.5)*1500, (Math.random()-0.5)*1500);
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+            const stars = new THREE.Points(geo, new THREE.PointsMaterial({color: 0xaaaaaa, size: 1.5, transparent: true, opacity: 0.6, fog: false}));
+            scene.add(stars);
+        }
+
+        function createSnow() {
+            const snowGeo = new THREE.BufferGeometry(); const snowPos = []; const snowVel = [];
+            for(let i=0; i<2000; i++) {
+                snowPos.push((Math.random()-0.5)*120, (Math.random()-0.5)*200, (Math.random()-0.5)*120);
+                snowVel.push((Math.random()-0.5)*0.02, -Math.random()*0.05 - 0.02, (Math.random()-0.5)*0.02);
+            }
+            snowGeo.setAttribute('position', new THREE.Float32BufferAttribute(snowPos, 3));
+            snowGeo.userData.velocities = new Float32Array(snowVel);
+            const snowMat = new THREE.PointsMaterial({
+                color: 0xffffff, size: 0.8, 
+                map: new THREE.TextureLoader().load('https://threejs.org/examples/textures/sprites/snowflake2.png'),
+                blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.9
+            });
+            snowParticles = new THREE.Points(snowGeo, snowMat);
+            scene.add(snowParticles);
+        }
+
+        function updateSnow() {
+            const positions = snowParticles.geometry.attributes.position.array;
+            const velocities = snowParticles.geometry.userData.velocities;
+            for(let i=0; i<positions.length/3; i++) {
+                positions[i*3] += velocities[i*3]; positions[i*3+1] += velocities[i*3+1]; positions[i*3+2] += velocities[i*3+2];
+                if(positions[i*3+1] < -60) positions[i*3+1] = 80 + Math.random()*20;
+                if(positions[i*3] > 70) positions[i*3] = -70; if(positions[i*3] < -70) positions[i*3] = 70;
+                if(positions[i*3+2] > 70) positions[i*3+2] = -70; if(positions[i*3+2] < -70) positions[i*3+2] = 70;
+            }
+            snowParticles.geometry.attributes.position.needsUpdate = true; snowParticles.rotation.y += 0.0005;
+        }
+
         function animate() {
             requestAnimationFrame(animate);
             time += 0.01;
@@ -573,86 +644,51 @@
                 const wrapper = document.getElementById('canvas-wrapper');
                 const x = handPos.x * wrapper.clientWidth;
                 const y = handPos.y * wrapper.clientHeight;
-                cursor.style.transform = `translate(${x - 20}px, ${y - 20}px)`; // Center cursor
-                mouseVector.x = (handPos.x * 2) - 1;
-                mouseVector.y = -(handPos.y * 2) + 1;
+                cursor.style.transform = `translate(${x - 20}px, ${y - 20}px)`;
+                mouseVector.x = (handPos.x * 2) - 1; mouseVector.y = -(handPos.y * 2) + 1;
             } else {
-                 cursor.style.transform = `translate(-200px, -200px)`;
-                 mouseVector.set(-99, -99);
+                 cursor.style.transform = `translate(-200px, -200px)`; mouseVector.set(-99, -99);
             }
 
             updateColorTheme();
-            updateInstancedMesh(goldSphereMesh, logicData.gold);
-            updateInstancedMesh(heartMesh, logicData.heart);
-            updateInstancedMesh(emeraldBoxMesh, logicData.emeraldBox);
-            updateInstancedMesh(emeraldTetraMesh, logicData.emeraldTetra);
-            updateInstancedMesh(goldShapeMesh[0], logicData.torus);
-            updateInstancedMesh(goldShapeMesh[1], logicData.smallStar);
-            updateInstancedMesh(candyMesh, logicData.candy);
-            updateGifts();
-            updatePhotos();
-            updateRibbons();
-            updateSnow();
-            updateSurfaceSnow();
-            updateRaycaster(); 
+            updateInstancedMesh(goldSphereMesh, logicData.gold); updateInstancedMesh(heartMesh, logicData.heart);
+            updateInstancedMesh(emeraldBoxMesh, logicData.emeraldBox); updateInstancedMesh(emeraldTetraMesh, logicData.emeraldTetra);
+            updateInstancedMesh(goldShapeMesh[0], logicData.torus); updateInstancedMesh(goldShapeMesh[1], logicData.smallStar);
+            updateInstancedMesh(candyMesh, logicData.candy); updateGifts();
+            updatePhotos(); updateRibbons(); updateSnow(); updateSurfaceSnow(); updateRaycaster(); 
 
             if (logicData.star) {
-                let target = currentState === STATE.TREE ?
-                logicData.star.userData.treePos : logicData.star.userData.scatterPos;
+                let target = currentState === STATE.TREE ? logicData.star.userData.treePos : logicData.star.userData.scatterPos;
                 logicData.star.position.lerp(target, 0.05);
-                if (currentState === STATE.TREE) {
-                    logicData.star.rotation.y += 0.01;
-                    logicData.star.rotation.x = 0; logicData.star.rotation.z = 0;
-                } else {
-                    logicData.star.rotation.x += 0.01;
-                    logicData.star.rotation.y += 0.01;
-                }
+                if (currentState === STATE.TREE) { logicData.star.rotation.y += 0.01; logicData.star.rotation.x = 0; logicData.star.rotation.z = 0; }
+                else { logicData.star.rotation.x += 0.01; logicData.star.rotation.y += 0.01; }
             }
 
             if (currentState === STATE.ZOOM) {
-                rotationVelocity.x = 0;
-                rotationVelocity.y = 0;
-            } 
-            else if (currentState === STATE.SCATTER) {
+                rotationVelocity.x = 0; rotationVelocity.y = 0;
+            } else if (currentState === STATE.SCATTER) {
                 if (isHandPresent) {
-                    const deltaX = handPos.x - lastHandPos.x;
-                    const deltaY = handPos.y - lastHandPos.y;
-                    
+                    const deltaX = handPos.x - lastHandPos.x; const deltaY = handPos.y - lastHandPos.y;
                     if (Math.abs(deltaX) > 0.001) rotationVelocity.y += deltaX * 0.15;
-                    // 【增强】上下旋转灵敏度
-                    if (Math.abs(deltaY) > 0.001) rotationVelocity.x += deltaY * 0.20;
-                    
+                    if (Math.abs(deltaY) > 0.001) rotationVelocity.x += deltaY * 0.20; // 增强上下控制
                     lastHandPos.x = handPos.x; lastHandPos.y = handPos.y;
                 }
-                
-                rotationVelocity.y *= 0.95;
-                rotationVelocity.x *= 0.95; 
-
-                // 【修复】移除自动回正
-                mainGroup.rotation.y += rotationVelocity.y;
-                mainGroup.rotation.x += rotationVelocity.x;
-
+                rotationVelocity.y *= 0.95; rotationVelocity.x *= 0.95; 
+                // 【不回正】
+                mainGroup.rotation.y += rotationVelocity.y; mainGroup.rotation.x += rotationVelocity.x;
             } else if (currentState === STATE.TREE) {
-                mainGroup.rotation.y += 0.002;
-                mainGroup.rotation.x *= 0.95;
+                mainGroup.rotation.y += 0.002; mainGroup.rotation.x *= 0.95;
             }
             composer.render();
         }
 
         function updateRaycaster() {
-            if (currentState !== STATE.SCATTER) {
-                hoveredPhotoIndex = -1;
-                return;
-            }
+            if (currentState !== STATE.SCATTER) { hoveredPhotoIndex = -1; return; }
             raycaster.setFromCamera(mouseVector, camera);
             const intersects = raycaster.intersectObjects(photoMeshes);
             if (intersects.length > 0) {
-                const hit = intersects[0].object;
-                const idx = photoMeshes.indexOf(hit);
-                hoveredPhotoIndex = idx;
-            } else {
-                hoveredPhotoIndex = -1;
-            }
+                hoveredPhotoIndex = photoMeshes.indexOf(intersects[0].object);
+            } else { hoveredPhotoIndex = -1; }
         }
 
         function updateInstancedMesh(mesh, dataArray) {
@@ -661,17 +697,9 @@
                 let target = currentState === STATE.TREE ? item.treePos : item.scatterPos;
                 if(currentState === STATE.ZOOM) target = item.scatterPos;
                 if (currentState === STATE.SCATTER) item.currentPos.y += Math.sin(time + i)*0.005;
-
-                item.currentPos.lerp(target, 0.08);
-                item.rotation.x += item.rotSpeed.x;
-                item.rotation.y += item.rotSpeed.y;
-                let s = item.scale;
-                if(currentState === STATE.ZOOM) s = item.scale * 0.6; 
-
-                dummy.position.copy(item.currentPos);
-                dummy.rotation.copy(item.rotation);
-                dummy.scale.setScalar(s);
-                dummy.updateMatrix();
+                item.currentPos.lerp(target, 0.08); item.rotation.x += item.rotSpeed.x; item.rotation.y += item.rotSpeed.y;
+                let s = item.scale; if(currentState === STATE.ZOOM) s = item.scale * 0.6; 
+                dummy.position.copy(item.currentPos); dummy.rotation.copy(item.rotation); dummy.scale.setScalar(s); dummy.updateMatrix();
                 mesh.setMatrixAt(i, dummy.matrix);
             }
             mesh.instanceMatrix.needsUpdate = true;
@@ -684,25 +712,13 @@
                 let target = currentState === STATE.TREE ? item.treePos : item.scatterPos;
                 if(currentState === STATE.ZOOM) target = item.scatterPos;
                 if (currentState === STATE.SCATTER) item.currentPos.y += Math.sin(time + i)*0.005;
-                
-                item.currentPos.lerp(target, 0.08);
-                item.rotation.y += 0.005; 
-                let s = item.scale * 1.5;
-                if(currentState === STATE.ZOOM) s *= 0.6;
-
-                dummy.position.copy(item.currentPos);
-                dummy.rotation.copy(item.rotation);
-                dummy.scale.setScalar(s);
-                dummy.updateMatrix();
-                
-                giftBoxMesh.setMatrixAt(i, dummy.matrix);
-                giftRibbonMesh.setMatrixAt(i*2, dummy.matrix);
-                dummy.rotateY(Math.PI/2);
-                dummy.updateMatrix();
-                giftRibbonMesh.setMatrixAt(i*2+1, dummy.matrix);
+                item.currentPos.lerp(target, 0.08); item.rotation.y += 0.005; 
+                let s = item.scale * 1.5; if(currentState === STATE.ZOOM) s *= 0.6;
+                dummy.position.copy(item.currentPos); dummy.rotation.copy(item.rotation); dummy.scale.setScalar(s); dummy.updateMatrix();
+                giftBoxMesh.setMatrixAt(i, dummy.matrix); giftRibbonMesh.setMatrixAt(i*2, dummy.matrix);
+                dummy.rotateY(Math.PI/2); dummy.updateMatrix(); giftRibbonMesh.setMatrixAt(i*2+1, dummy.matrix);
             }
-            giftBoxMesh.instanceMatrix.needsUpdate = true;
-            giftRibbonMesh.instanceMatrix.needsUpdate = true;
+            giftBoxMesh.instanceMatrix.needsUpdate = true; giftRibbonMesh.instanceMatrix.needsUpdate = true;
         }
 
         function updatePhotos() {
@@ -710,12 +726,10 @@
                 let targetPos, targetScale = 2.0; 
                 if (currentState === STATE.SCATTER) {
                     if (idx === hoveredPhotoIndex) {
-                        targetScale = 5.0; 
-                        mesh.material.color.setHex(0xffffff); 
+                        targetScale = 5.0; mesh.material.color.setHex(0xffffff); 
                         document.getElementById('cursor').style.borderColor = '#00ff88'; 
                     } else {
-                        targetScale = 2.5;
-                        mesh.material.color.setHex(0x666666); 
+                        targetScale = 2.5; mesh.material.color.setHex(0x555555); // 更深一点防止过曝
                         if(idx !== hoveredPhotoIndex && document.getElementById('cursor').style.borderColor === 'rgb(0, 255, 136)') {
                             document.getElementById('cursor').style.borderColor = 'rgba(255,255,255,0.9)';
                         }
@@ -723,24 +737,18 @@
                     mesh.lookAt(camera.position); 
                 }
                 if (currentState === STATE.ZOOM && idx === zoomTargetIndex) {
-                    const targetWorldPos = new THREE.Vector3(0, 0, 80); 
-                    targetPos = mainGroup.worldToLocal(targetWorldPos);
-                    targetScale = 5.0; 
-                    mesh.material.color.setHex(0xffffff); 
-                    mesh.lookAt(camera.position); 
+                    const targetWorldPos = new THREE.Vector3(0, 0, 80); targetPos = mainGroup.worldToLocal(targetWorldPos);
+                    targetScale = 5.0; mesh.material.color.setHex(0xffffff); mesh.lookAt(camera.position); 
                 } else {
                     targetPos = currentState === STATE.TREE ? mesh.userData.treePos : mesh.userData.scatterPos;
                     if(currentState !== STATE.TREE) mesh.position.y += Math.sin(time+idx)*0.01;
-                    if (currentState === STATE.TREE) {
-                       mesh.rotation.y += 0.01;
-                       mesh.material.color.setHex(0x888888);
-                    }
+                    if (currentState === STATE.TREE) { mesh.rotation.y += 0.01; mesh.material.color.setHex(0x888888); }
                 }
-                mesh.position.lerp(targetPos, 0.1);
-                mesh.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.1);
+                mesh.position.lerp(targetPos, 0.1); mesh.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.1);
             });
         }
 
+        // 异步加载 MediaPipe
         async function setupMediaPipe() {
             try {
                 const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm");
@@ -755,16 +763,13 @@
                 navigator.mediaDevices.getUserMedia({ video: true }).then((stream) => {
                     video.srcObject = stream;
                     video.addEventListener("loadeddata", () => {
-                        document.getElementById('status-text').innerText = "系统就绪，请伸手";
+                        updateStatus("✅ 系统就绪，请伸出手掌", "#00ff00");
                         predictWebcam(handLandmarker, video);
                     });
-                }).catch(err => {
-                    alert("无法获取摄像头权限: " + err);
-                });
+                }).catch(err => { updateStatus("❌ 无法获取摄像头权限", "red"); });
             } catch (err) {
-                console.error("MediaPipe Init Error:", err);
-                // 这里加个中文提示，因为国内网络经常加载失败
-                alert("AI模型加载失败，可能是网络问题 (Google服务被墙)。建议开启VPN或代理。");
+                console.error("AI Load Error:", err);
+                updateStatus("❌ AI模型加载失败(网络原因)", "red");
             }
         }
 
@@ -773,20 +778,17 @@
             if (video.currentTime !== lastVideoTime) {
                 lastVideoTime = video.currentTime;
                 const result = handLandmarker.detectForVideo(video, performance.now());
-                
                 if (result.landmarks && result.landmarks.length > 0) {
-                    const landmarks = result.landmarks[0];
                     isHandPresent = true;
-                    handleGesture(landmarks);
-                } else { isHandPresent = false;
-                }
+                    handleGesture(result.landmarks[0]);
+                } else { isHandPresent = false; }
             }
             requestAnimationFrame(() => predictWebcam(handLandmarker, video));
         }
         
         function handleGesture(landmarks) {
             const wrist = landmarks[0];
-            // 【关键】扩大边缘保护区：屏幕边缘 15% 区域不响应手势
+            // 边缘保护
             if (wrist.x < 0.15 || wrist.x > 0.85 || wrist.y < 0.15 || wrist.y > 0.85) return;
 
             const palmX = 1 - (landmarks[0].x + landmarks[9].x) / 2;
@@ -795,63 +797,37 @@
             handPos.y = handPos.y * 0.8 + palmY * 0.2;
 
             let folded = 0;
-            [4,8,12,16,20].forEach(i => { // 检查5根手指
-                const tip = landmarks[i];
-                const base = landmarks[0]; // 手腕
-                const d = Math.sqrt(Math.pow(tip.x-base.x,2) + Math.pow(tip.y-base.y,2));
-                if(d < 0.30) folded++; 
+            [4,8,12,16,20].forEach(i => { 
+                const tip = landmarks[i]; const base = landmarks[0]; 
+                if(Math.sqrt((tip.x-base.x)**2 + (tip.y-base.y)**2) < 0.30) folded++; 
             });
-            // 【关键】严格判定：必须5指全弯才算拳头
             const isFist = folded >= 5; 
-            
-            const dPinch = Math.sqrt(Math.pow(landmarks[4].x-landmarks[8].x,2) + Math.pow(landmarks[4].y-landmarks[8].y,2));
+            const dPinch = Math.sqrt((landmarks[4].x-landmarks[8].x)**2 + (landmarks[4].y-landmarks[8].y)**2);
             const isPinch = dPinch < 0.08; 
-            
             const isOpen = !isFist && !isPinch;
 
-            const status = document.getElementById('status-text');
             if (isPinch && currentState === STATE.SCATTER) {
                 if (photoMeshes.length > 0) {
                     currentState = STATE.ZOOM;
-                    status.innerHTML = "状态: <span style='color:#ffd700'>抓取照片</span>";
-                    
-                    // 【关键】只抓取光标选中的照片
-                    if (hoveredPhotoIndex !== -1) {
-                        zoomTargetIndex = hoveredPhotoIndex;
-                    } 
+                    updateStatus("✊ 已抓取照片", "#ffd700");
+                    if (hoveredPhotoIndex !== -1) zoomTargetIndex = hoveredPhotoIndex;
                 }
             } else if (isFist) {
-                if (currentState !== STATE.TREE) {
-                    isPinkTheme = !isPinkTheme;
-                }
-                currentState = STATE.TREE;
-                zoomTargetIndex = -1;
-                rotationVelocity.x = 0; rotationVelocity.y = 0;
-                
-                if (isPinkTheme) {
-                    status.innerHTML = "状态: <span style='color:#ffc0cb'>梦幻少女粉</span>";
-                } else {
-                    status.innerHTML = "状态: <span style='color:#00ff00'>聚合圣诞树</span>";
-                }
-
+                if (currentState !== STATE.TREE) isPinkTheme = !isPinkTheme;
+                currentState = STATE.TREE; zoomTargetIndex = -1;
+                rotVel.x = 0; rotVel.y = 0;
+                updateStatus("🎄 聚合模式", "#00ff00");
             } else if (isOpen) {
                 if(currentState !== STATE.SCATTER) {
                     currentState = STATE.SCATTER;
                     lastHandPos.x = handPos.x; lastHandPos.y = handPos.y;
                 }
-                status.innerHTML = "状态: <span style='color:#00aaff'>星云散开</span>";
+                updateStatus("✨ 探索模式 (移动旋转)", "#00aaff");
             }
         }
 
-        function onWindowResize() {
-            const dims = updateDimensions();
-            camera.aspect = dims.width / dims.height; camera.updateProjectionMatrix();
-            renderer.setSize(dims.width, dims.height); composer.setSize(dims.width, dims.height);
-        }
-
         document.getElementById('file-input').addEventListener('change', function(e) {
-            const files = e.target.files;
-            if (!files.length) return;
+            const files = e.target.files; if (!files.length) return;
             for(let i=0; i<files.length; i++) {
                 const reader = new FileReader();
                 reader.onload = function(evt) {
@@ -862,35 +838,21 @@
             }
         });
         function addPhotoMesh(img) {
-            const tex = new THREE.Texture(img);
-            tex.needsUpdate = true; tex.colorSpace = THREE.SRGBColorSpace;
-            let w = 4, h = 4;
-            if(img.width > img.height) h = 4 * (img.height/img.width); else w = 4 * (img.width/img.height);
-            const mesh = new THREE.Mesh(
-                new THREE.PlaneGeometry(w, h),
-                new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, color: 0x666666 })
-            );
+            const tex = new THREE.Texture(img); tex.needsUpdate = true; tex.colorSpace = THREE.SRGBColorSpace;
+            let w = 4, h = 4; if(img.width > img.height) h = 4 * (img.height/img.width); else w = 4 * (img.width/img.height);
+            const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, color: 0x555555 }));
             const frame = new THREE.Mesh(new THREE.BoxGeometry(w+0.2, h+0.2, 0.1), new THREE.MeshPhysicalMaterial({color:0xffd700, roughness:0.2, metalness:1}));
             frame.position.z = -0.06; mesh.add(frame);
-            const u = Math.random();
-            const hNorm = 1 - Math.pow(u, 0.55);
+            const u = Math.random(); const hNorm = 1 - Math.pow(u, 0.55);
             const h_pos = (hNorm - 0.5) * CONFIG.treeHeight;
-            const yRatio = 1.0 - hNorm;
-            const rMax = CONFIG.baseRadius * Math.pow(yRatio, 1.5);
-            const r = rMax * 0.9 + Math.random();
+            const r = CONFIG.baseRadius * Math.pow(1.0 - hNorm, 1.5) * 0.9 + Math.random();
             const theta = Math.random() * Math.PI * 2;
             const treePos = new THREE.Vector3(r * Math.cos(theta), h_pos, r * Math.sin(theta));
-            
-            mesh.userData = { treePos, scatterPos: randomSpherePoint(50) };
-            mesh.position.copy(treePos);
-            photoMeshes.push(mesh);
-            mainGroup.add(mesh);
+            mesh.userData = { treePos, scatterPos: new THREE.Vector3((Math.random()-0.5)*100, (Math.random()-0.5)*80, (Math.random()-0.5)*50) };
+            mesh.position.copy(treePos); photoMeshes.push(mesh); mainGroup.add(mesh);
         }
 
-        // 启动主程序
         initThree();
-        // 启动手势识别
-        setupMediaPipe();
     </script>
 </body>
 </html>
