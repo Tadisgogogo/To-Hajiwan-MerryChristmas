@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jewel Christmas Tree - Gesture Fixed</title>
+    <title>Jewel Christmas Tree - Clean & Final</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -42,7 +42,7 @@
             transform: scaleX(-1); 
             opacity: 0.6; 
             pointer-events: none;
-            background: rgba(0, 0, 0, 0.3); /* 加一点深色背景确保能看清 */
+            background: rgba(0, 0, 0, 0.3);
             box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
         }
         #input-video { 
@@ -50,19 +50,8 @@
             height: 100%; object-fit: cover; 
             position: absolute; top: 0; left: 0;
         }
-        /* 辅助状态提示：加载时显示，加载完隐藏 */
-        #status-indicator {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            color: #ffd700;
-            font-size: 24px;
-            z-index: 200;
-            pointer-events: none;
-            text-shadow: 0 0 10px black;
-            font-family: sans-serif;
-        }
-
+        
+        /* 艺术字：底部沉浸式显示 */
         #title-overlay {
             position: absolute;
             bottom: 5%; 
@@ -110,11 +99,9 @@
     <div id="canvas-wrapper">
         <div id="canvas-container"></div>
         <div id="title-overlay">Merry Christmas</div>
-        
-        <div id="status-indicator">正在初始化手势识别...</div>
-
         <div id="video-container">
             <video id="input-video" autoplay playsinline muted></video>
+            <canvas id="skeleton-canvas"></canvas>
         </div>
     </div>
 
@@ -635,7 +622,6 @@
                 if (isHandPresent) {
                     const centerX = 0.5;
                     const centerY = 0.5;
-                    // [手势] 优化后的死区 0.20
                     const deadZone = 0.20; 
                     const maxSpeed = 0.035; 
 
@@ -731,17 +717,18 @@
 
         async function setupMediaPipe() {
             const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm");
+            // [修改] 强制单手模式 (numHands: 1)，修复卡顿和识别混乱
             const handLandmarker = await HandLandmarker.createFromOptions(vision, {
                 baseOptions: { modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`, delegate: "GPU" },
-                runningMode: "VIDEO", numHands: 2 
+                runningMode: "VIDEO", numHands: 1 
             });
             const video = document.getElementById("input-video");
             navigator.mediaDevices.getUserMedia({ video: true }).then((stream) => {
                 video.srcObject = stream;
                 video.addEventListener("loadeddata", () => {
                     video.play();
-                    // 隐藏 Loading 提示
-                    document.getElementById('status-indicator').style.display = 'none';
+                    // [修改] 隐藏 Loading 提示
+                    // document.getElementById('status-indicator').style.display = 'none'; // 已删除div
                     predictWebcam(handLandmarker, video);
                 });
             });
@@ -759,57 +746,45 @@
 
                 if (result.landmarks && result.landmarks.length > 0) {
                     isHandPresent = true;
-                    handleGesture(result.landmarks); 
+                    // [修改] 直接传递第一只手的数据，不再遍历，逻辑更直接
+                    handleGesture(result.landmarks[0]); 
                 } else { isHandPresent = false; }
             }
             requestAnimationFrame(() => predictWebcam(handLandmarker, video));
         }
         
-        function handleGesture(allLandmarks) {
-            // [手势] 优化后的手势识别逻辑：寻找偏离中心最远的手作为控制手
-            let bestDist = -1;
-            let activeHand = allLandmarks[0];
-
-            for (const landmarks of allLandmarks) {
-                const px = 1 - (landmarks[0].x + landmarks[9].x) / 2;
-                const py = (landmarks[0].y + landmarks[9].y) / 2;
-                const dist = Math.sqrt(Math.pow(px-0.5, 2) + Math.pow(py-0.5, 2));
-                if(dist > bestDist) {
-                    bestDist = dist;
-                    activeHand = landmarks;
-                }
-            }
-
-            const palmX = 1 - (activeHand[0].x + activeHand[9].x) / 2;
-            const palmY = (activeHand[0].y + activeHand[9].y) / 2;
+        // [修改] 简化后的单手逻辑
+        function handleGesture(landmarks) {
+            // 1. 获取手掌中心（控制旋转）
+            const palmX = 1 - (landmarks[0].x + landmarks[9].x) / 2;
+            const palmY = (landmarks[0].y + landmarks[9].y) / 2;
             
-            handPos.x = handPos.x * 0.8 + palmX * 0.2; // 稍微增加平滑度
+            handPos.x = handPos.x * 0.8 + palmX * 0.2; // 平滑处理
             handPos.y = handPos.y * 0.8 + palmY * 0.2;
 
-            let isAnyPinch = false;
-            let isAnyFist = false;
-            let isAnyOpen = false;
+            // 2. 判断手势
+            let folded = 0;
+            // 检查指尖到手腕的距离，判断是否握拳
+            [8,12,16,20].forEach(i => { 
+                const d = Math.sqrt(Math.pow(landmarks[i].x-landmarks[0].x,2) + Math.pow(landmarks[i].y-landmarks[0].y,2));
+                if(d < 0.35) folded++; 
+            });
+            
+            // 捏合判断：食指尖与拇指尖的距离
+            const dPinch = Math.sqrt(Math.pow(landmarks[4].x-landmarks[8].x,2) + Math.pow(landmarks[4].y-landmarks[8].y,2));
+            
+            const isPinch = dPinch < 0.1; 
+            const isFist = folded >= 4;
+            const isOpen = !isFist && !isPinch;
 
-            for (const landmarks of allLandmarks) {
-                let folded = 0;
-                [8,12,16,20].forEach(i => { 
-                    const d = Math.sqrt(Math.pow(landmarks[i].x-landmarks[0].x,2) + Math.pow(landmarks[i].y-landmarks[0].y,2));
-                    if(d < 0.35) folded++; 
-                });
-                const dPinch = Math.sqrt(Math.pow(landmarks[4].x-landmarks[8].x,2) + Math.pow(landmarks[4].y-landmarks[8].y,2));
-                
-                if (dPinch < 0.1) isAnyPinch = true;
-                if (folded >= 4) isAnyFist = true;
-                if (!isAnyFist && !isAnyPinch) isAnyOpen = true;
-            }
-
-            if (isAnyPinch && currentState === STATE.SCATTER) {
+            // 3. 状态机切换
+            if (isPinch && currentState === STATE.SCATTER) {
                 if (photoMeshes.length > 0) {
                     currentState = STATE.ZOOM;
                     zoomTargetIndex = currentPhotoSequence; 
                 }
             } 
-            else if (isAnyFist) {
+            else if (isFist) {
                 if (currentState !== STATE.TREE) isPinkTheme = !isPinkTheme;
                 currentState = STATE.TREE; zoomTargetIndex = -1;
                 rotationVelocity.x = 0; rotationVelocity.y = 0;
@@ -818,7 +793,7 @@
                 mainGroup.rotation.x = mainGroup.rotation.x % (Math.PI * 2);
                 if (mainGroup.rotation.y < 0) mainGroup.rotation.y += Math.PI * 2;
             } 
-            else if (isAnyOpen) {
+            else if (isOpen) {
                 if(currentState === STATE.ZOOM) {
                     currentState = STATE.SCATTER;
                     currentPhotoSequence = (currentPhotoSequence + 1) % photoMeshes.length;
