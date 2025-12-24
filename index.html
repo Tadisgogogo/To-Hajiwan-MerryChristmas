@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jewel Christmas Tree - Final Perfect Edition</title>
+    <title>Christmas Tree - Final</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -23,7 +23,6 @@
 
         #canvas-wrapper {
             position: relative;
-            box-shadow: 0 0 50px rgba(255, 215, 0, 0.1);
             background: #000;
         }
 
@@ -33,15 +32,16 @@
             display: block;
         }
         
+        /* [修改] 摄像头区域：去掉边框(灰白方块)，透明度极低(几乎不可见但仍在运行) */
         #video-container {
             position: absolute;
             top: 20px; right: 20px; width: 160px; height: 120px; z-index: 2;
             border-radius: 8px;
             overflow: hidden;
             transform: scaleX(-1); 
-            opacity: 0.6; 
-            border: 1px solid rgba(255, 255, 255, 0.4);
+            opacity: 0.05; /* 几乎透明，彻底消除视觉干扰 */
             pointer-events: none;
+            /* border: 1px solid rgba(255, 255, 255, 0.4);  <-- 删除了这个边框 */
         }
         #input-video { 
             width: 100%;
@@ -54,7 +54,7 @@
             z-index: 10;
         }
 
-        /* 艺术字设置 */
+        /* 艺术字：底部沉浸式显示 */
         #title-overlay {
             position: absolute;
             bottom: 5%; 
@@ -71,28 +71,19 @@
             opacity: 0.85; 
         }
 
-        /* 金色主题 */
         .theme-gold #title-overlay {
             color: #ffd700; 
-            text-shadow: 
-                0 0 10px rgba(255, 215, 0, 0.6),
-                0 0 20px rgba(255, 140, 0, 0.3);
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.6), 0 0 20px rgba(255, 140, 0, 0.3);
         }
 
-        /* 粉色主题 */
         .theme-pink #title-overlay {
             color: #fff0f5; 
-            text-shadow: 
-                0 0 5px #ff69b4,   
-                0 0 15px #ff1493,  
-                0 0 30px #c71585;  
+            text-shadow: 0 0 5px #ff69b4, 0 0 15px #ff1493, 0 0 30px #c71585;  
         }
 
-        /* 隐藏不必要的UI，保留 status-text 以显示状态 */
-        #ui-layer { pointer-events: none; position: absolute; top: 20px; left: 20px; z-index: 20; }
-        #status-text { color: white; font-size: 14px; opacity: 0.7; }
+        /* [修改] 彻底隐藏左上角状态文字和所有无关UI */
+        #ui-layer { display: none !important; }
         #fullscreen-btn { display: none !important; }
-        #file-input, #loading, .instructions, #upload-btn { display: none !important; }
     </style>
     <script type="importmap">
         {
@@ -114,15 +105,7 @@
             <canvas id="skeleton-canvas"></canvas>
         </div>
 
-        <button id="fullscreen-btn">⛶</button>
-
-        <div id="ui-layer">
-            <div id="status-text">系统初始化...</div>
-            <div class="instructions"></div>
-            <button id="upload-btn">上传照片</button>
-            <input type="file" id="file-input" multiple accept="image/*">
-        </div>
-    </div>
+        <div id="ui-layer"></div> </div>
 
     <script type="module">
         import * as THREE from 'three';
@@ -132,7 +115,6 @@
         import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
         import { FilesetResolver, HandLandmarker } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0';
 
-        // --- Config ---
         const CONFIG = {
             goldCount: 750, emeraldBoxCount: 580, emeraldTetraCount: 580,
             gemCount: 220, giftCount: 40, candyCount: 50,
@@ -230,29 +212,17 @@
             scene.add(mainGroup);
             window.addEventListener('resize', onWindowResize);
             
-            // [新增] 启动自动加载照片
             loadPredefinedPhotos();
         }
 
-        // [新增] 自动加载 1.jpg 到 18.jpg
+        // 自动加载照片逻辑
         function loadPredefinedPhotos() {
-            const photoCount = 18; // 照片总数
-            console.log(`开始加载 ${photoCount} 张照片...`);
-            
+            const photoCount = 18; 
             for (let i = 1; i <= photoCount; i++) {
                 const img = new Image();
-                // 假设图片在同一目录下，文件名为 1.jpg, 2.jpg...
-                // 注意：文件名大小写敏感，请确保后缀是 .jpg (小写)
-                img.src = `${i}.jpg`; 
-                
-                img.onload = () => {
-                    console.log(`照片 ${i}.jpg 加载成功`);
-                    addPhotoMesh(img);
-                };
-                
-                img.onerror = () => {
-                    console.warn(`照片 ${i}.jpg 未找到，请确保文件已上传且命名正确。`);
-                };
+                img.src = `${i}.jpg`; // 确保这里和文件名一致
+                img.onload = () => { addPhotoMesh(img); };
+                img.onerror = () => { console.log(`未找到 ${i}.jpg，跳过`); };
             }
         }
 
@@ -744,7 +714,7 @@
             navigator.mediaDevices.getUserMedia({ video: true }).then((stream) => {
                 video.srcObject = stream;
                 video.addEventListener("loadeddata", () => {
-                    document.getElementById('status-text').innerText = "系统就绪，请伸手";
+                    // 系统初始化完成，不显示文字，直接开始预测
                     predictWebcam(handLandmarker, video);
                 });
             });
@@ -789,12 +759,10 @@
             const dPinch = Math.sqrt(Math.pow(landmarks[4].x-landmarks[8].x,2) + Math.pow(landmarks[4].y-landmarks[8].y,2));
             const isPinch = dPinch < 0.1; const isFist = folded >= 4;
             const isOpen = !isFist && !isPinch;
-            const status = document.getElementById('status-text');
-
+            
             if (isPinch && currentState === STATE.SCATTER) {
                 if (photoMeshes.length > 0) {
                     currentState = STATE.ZOOM;
-                    status.innerHTML = "状态: <span style='color:#ffd700'>抓取照片</span>";
                     if (zoomTargetIndex === -1) {
                         let minDist = Infinity, bestIdx = 0;
                         photoMeshes.forEach((mesh, idx) => {
@@ -812,14 +780,10 @@
                 mainGroup.rotation.y = mainGroup.rotation.y % (Math.PI * 2);
                 mainGroup.rotation.x = mainGroup.rotation.x % (Math.PI * 2);
                 if (mainGroup.rotation.y < 0) mainGroup.rotation.y += Math.PI * 2;
-                
-                if (isPinkTheme) status.innerHTML = "状态: <span style='color:#ffc0cb'>梦幻少女粉</span>";
-                else status.innerHTML = "状态: <span style='color:#00ff00'>聚合圣诞树</span>";
             } else if (isOpen) {
                 if(currentState !== STATE.SCATTER) {
                     currentState = STATE.SCATTER;
                 }
-                status.innerHTML = "状态: <span style='color:#00aaff'>星云散开</span>";
             }
         }
 
@@ -829,18 +793,6 @@
             renderer.setSize(dims.width, dims.height); composer.setSize(dims.width, dims.height);
         }
 
-        document.getElementById('file-input').addEventListener('change', function(e) {
-            const files = e.target.files;
-            if (!files.length) return;
-            for(let i=0; i<files.length; i++) {
-                const reader = new FileReader();
-                reader.onload = function(evt) {
-                    const img = new Image(); img.src = evt.target.result;
-                    img.onload = () => { addPhotoMesh(img); }
-                }
-                reader.readAsDataURL(files[i]);
-            }
-        });
         function addPhotoMesh(img) {
             const tex = new THREE.Texture(img);
             tex.needsUpdate = true; tex.colorSpace = THREE.SRGBColorSpace;
