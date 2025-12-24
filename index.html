@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jewel Christmas Tree - Ultimate Big Photo</title>
+    <title>Jewel Christmas Tree - Perfect Exposure</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -175,7 +175,8 @@
             renderer.setSize(wrapper.clientWidth, wrapper.clientHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
             renderer.toneMapping = THREE.ACESFilmicToneMapping;
-            renderer.toneMappingExposure = 0.8; 
+            // [修改 1] 降低曝光度，解决过曝
+            renderer.toneMappingExposure = 0.6; 
             container.appendChild(renderer.domElement);
 
             const pmremGenerator = new THREE.PMREMGenerator(renderer);
@@ -197,7 +198,8 @@
 
             const bloomPass = new UnrealBloomPass(new THREE.Vector2(wrapper.clientWidth, wrapper.clientHeight), 1.5, 0.4, 0.85);
             bloomPass.threshold = 0.3;
-            bloomPass.strength = 0.8; 
+            // [修改 2] 降低辉光强度，防止照片边缘发白
+            bloomPass.strength = 0.5; 
             bloomPass.radius = 0.8;
 
             composer = new EffectComposer(renderer);
@@ -694,7 +696,7 @@
                 if (currentState === STATE.ZOOM && idx === zoomTargetIndex) {
                     const targetWorldPos = new THREE.Vector3(0, 0, 80); 
                     targetPos = mainGroup.worldToLocal(targetWorldPos);
-                    targetScale = 12.0; // [修改] 9.0 让照片在捏合时变得很大
+                    targetScale = 12.0; // 放大倍率
                     mesh.lookAt(camera.position); 
                 } else {
                     targetPos = currentState === STATE.TREE ? mesh.userData.treePos : mesh.userData.scatterPos;
@@ -740,6 +742,10 @@
             requestAnimationFrame(() => predictWebcam(handLandmarker, video));
         }
         
+        function drawSkeleton(ctx, landmarks, w, h) {
+            // 不绘制任何辅助线
+        }
+
         function handleGesture(allLandmarks) {
             const primaryHand = allLandmarks[0];
             const palmX = 1 - (primaryHand[0].x + primaryHand[9].x) / 2;
@@ -806,12 +812,13 @@
 
             const mesh = new THREE.Mesh(
                 new THREE.PlaneGeometry(w, h),
+                // [修改 3] 最终材质修正，防止过曝
                 new THREE.MeshStandardMaterial({ 
                     map: tex, 
                     side: THREE.DoubleSide,
                     roughness: 0.4,
                     metalness: 0.1,
-                    color: 0xaaaaaa 
+                    color: 0x777777 // 深灰色，降低整体亮度
                 })
             );
             const frame = new THREE.Mesh(new THREE.BoxGeometry(w+0.1, h+0.1, 0.05), new THREE.MeshPhysicalMaterial({color:0xffd700, roughness:0.2, metalness:1}));
@@ -837,4 +844,3 @@
     </script>
 </body>
 </html>
-
