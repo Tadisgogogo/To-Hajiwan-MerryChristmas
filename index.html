@@ -3,7 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jewel Christmas Tree - Infinite Flow</title>
+    <title>Jewel Christmas Tree - Final Perfect Edition</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
+
     <style>
         body { 
             margin: 0;
@@ -31,15 +36,16 @@
         #video-container {
             position: absolute;
             top: 20px; right: 20px; width: 160px; height: 120px; z-index: 2;
-            border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 8px;
+            border-radius: 8px;
             overflow: hidden;
-            transform: scaleX(-1); box-shadow: 0 0 15px rgba(0,0,0,0.5);
-            background: rgba(0,0,0,0.5);
-            transition: opacity 0.5s;
+            transform: scaleX(-1); 
+            opacity: 0.6; 
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            pointer-events: none;
         }
         #input-video { 
             width: 100%;
-            height: 100%; object-fit: cover; opacity: 0.6; 
+            height: 100%; object-fit: cover; 
             position: absolute; top: 0; left: 0;
         }
         #skeleton-canvas {
@@ -48,58 +54,45 @@
             z-index: 10;
         }
 
-        #ui-layer {
+        /* 艺术字设置 */
+        #title-overlay {
             position: absolute;
-            top: 30px; left: 30px; z-index: 3; pointer-events: none;
-            color: #fff; text-shadow: 0 0 10px rgba(0,0,0,0.8);
-            transition: opacity 0.5s;
-        }
-
-        h1 { display: none; }
-
-        .instructions {
-            font-size: 0.9rem;
-            color: #eee; line-height: 1.8; max-width: 320px;
-            background: rgba(20, 20, 20, 0.7); padding: 15px; border-radius: 8px;
-            border-left: 3px solid #d4af37;
-            backdrop-filter: blur(5px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        .highlight { color: #d4af37; font-weight: bold; }
-        #status-text { margin-bottom: 10px; font-size: 1rem; color: #fff; font-weight: bold; }
-
-        #upload-btn {
-            pointer-events: auto;
-            background: linear-gradient(45deg, #444, #666); border: 1px solid #888;
-            color: #fff; padding: 10px 24px; cursor: pointer; text-transform: uppercase;
-            font-size: 0.8rem;
-            margin-top: 25px; transition: 0.3s; 
-            letter-spacing: 1px; border-radius: 20px;
-        }
-        #upload-btn:hover { background: #fff; color: #000; box-shadow: 0 0 20px rgba(255,255,255,0.5); }
-        #file-input { display: none; }
-        
-        #loading { display: none; }
-
-        #fullscreen-btn {
-            position: absolute;
-            top: 30px; right: 200px; z-index: 20;
-            background: rgba(0,0,0,0.5); color: #d4af37; border: 1px solid #d4af37;
-            width: 40px; height: 40px; border-radius: 50%;
-            cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.2rem; transition: all 0.3s;
-        }
-        #fullscreen-btn:hover { background: #d4af37; color: #000; }
-
-        .hide-ui #ui-layer, 
-        .hide-ui #upload-btn {
-            opacity: 0;
+            bottom: 5%; 
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 50; 
+            font-family: 'Great Vibes', cursive; 
+            font-size: 4.2rem; 
+            font-weight: normal;
+            letter-spacing: 2px;
             pointer-events: none;
+            transition: all 1.2s ease;
+            white-space: nowrap;
+            opacity: 0.85; 
         }
-        
-        .hide-ui #fullscreen-btn { opacity: 0.3; }
-        .hide-ui #fullscreen-btn:hover { opacity: 1; }
+
+        /* 金色主题 */
+        .theme-gold #title-overlay {
+            color: #ffd700; 
+            text-shadow: 
+                0 0 10px rgba(255, 215, 0, 0.6),
+                0 0 20px rgba(255, 140, 0, 0.3);
+        }
+
+        /* 粉色主题 */
+        .theme-pink #title-overlay {
+            color: #fff0f5; 
+            text-shadow: 
+                0 0 5px #ff69b4,   
+                0 0 15px #ff1493,  
+                0 0 30px #c71585;  
+        }
+
+        /* 隐藏不必要的UI，保留 status-text 以显示状态 */
+        #ui-layer { pointer-events: none; position: absolute; top: 20px; left: 20px; z-index: 20; }
+        #status-text { color: white; font-size: 14px; opacity: 0.7; }
+        #fullscreen-btn { display: none !important; }
+        #file-input, #loading, .instructions, #upload-btn { display: none !important; }
     </style>
     <script type="importmap">
         {
@@ -110,30 +103,23 @@
         }
     </script>
 </head>
-<body>
+<body class="theme-gold">
 
     <div id="canvas-wrapper">
-       
         <div id="canvas-container"></div>
-        
+        <div id="title-overlay">Merry Christmas</div>
+
         <div id="video-container">
             <video id="input-video" autoplay playsinline muted></video>
             <canvas id="skeleton-canvas"></canvas>
         </div>
 
-        <button id="fullscreen-btn" onclick="toggleUI()" title="切换沉浸模式">⛶</button>
+        <button id="fullscreen-btn">⛶</button>
 
         <div id="ui-layer">
             <div id="status-text">系统初始化...</div>
-    
-            <div class="instructions">
-                • <span class="highlight">握拳</span> : 聚合/切换风格<br/>
-                • <span class="highlight">张开手</span> : 星云散开<br/>
-                • <span class="highlight">向右划动</span> : 惯性拨动<br/>
-                • <span class="highlight">捏合手指</span> : 抓取照片
-            </div>
-      
-            <button id="upload-btn" onclick="document.getElementById('file-input').click()">上传照片</button>
+            <div class="instructions"></div>
+            <button id="upload-btn">上传照片</button>
             <input type="file" id="file-input" multiple accept="image/*">
         </div>
     </div>
@@ -148,77 +134,45 @@
 
         // --- Config ---
         const CONFIG = {
-            goldCount: 750,        
-            emeraldBoxCount: 580,  
-            emeraldTetraCount: 580,
-            
-            gemCount: 220,         
-            giftCount: 40,         
-            candyCount: 50,        
-            
-            torusCount: 90,        
-            smallStarCount: 90,    
-          
-            treeHeight: 90,
-            baseRadius: 48         
+            goldCount: 750, emeraldBoxCount: 580, emeraldTetraCount: 580,
+            gemCount: 220, giftCount: 40, candyCount: 50,
+            torusCount: 90, smallStarCount: 90,
+            treeHeight: 90, baseRadius: 48         
         };
 
         const STATE = { TREE: 'tree', SCATTER: 'scatter', ZOOM: 'zoom' };
         let currentState = STATE.TREE;
 
-        // --- 颜色主题控制 ---
         let isPinkTheme = false;
         let themeProgress = 0;
-        // 0 = 原始, 1 = 粉色
 
         let scene, camera, renderer, composer;
         let mainGroup = new THREE.Group();
-        let snowParticles; 
-        let surfaceSnowParticles; // 表面悬浮雪花
+        let snowParticles, surfaceSnowParticles;
         
-        // Meshes
         let goldSphereMesh, goldShapeMesh;
         let heartMesh, emeraldBoxMesh, emeraldTetraMesh;
         let candyMesh, giftBoxMesh, giftRibbonMesh;
-        let topStarMesh; 
+        let topStarMesh;
         
         let photoMeshes = [];
         let zoomTargetIndex = -1;
 
-        // Ribbon Data
         let ribbonMesh;
-        const RIBBON_COUNT = 12; 
-        const RIBBON_SEGMENTS = 600;
+        const RIBBON_COUNT = 12; const RIBBON_SEGMENTS = 600;
         const ribbonsData = [];
-        
-        // --- 显隐控制变量 ---
-        let ribbonFade = 0;
-        let ribbonDelayTimer = 0; 
-        let ribbonScatterScale = 0; // 0 (Tree) -> 1 (Scatter)
+        let ribbonFade = 0; let ribbonScatterScale = 0;
 
-        // Logic Data
         let logicData = {
-            gold: [],
-            heart: [],
-            emeraldBox: [],
-            emeraldTetra: [],
-            torus: [],
-            smallStar: [],
-            candy: [],
-            gift: []
+            gold: [], heart: [], emeraldBox: [], emeraldTetra: [],
+            torus: [], smallStar: [], candy: [], gift: []
         };
-
         const dummy = new THREE.Object3D();
         let time = 0;
         
-        let handPos = { x: 0, y: 0 };
-        let lastHandPos = { x: 0, y: 0 };
+        let handPos = { x: 0.5, y: 0.5 };
         let isHandPresent = false;
         let rotationVelocity = { x: 0, y: 0 };
-
-        window.toggleUI = function() {
-            document.getElementById('canvas-wrapper').classList.toggle('hide-ui');
-        };
 
         function initThree() {
             const container = document.getElementById('canvas-container');
@@ -229,8 +183,9 @@
             scene.fog = new THREE.FogExp2(0x020202, 0.002);
 
             updateDimensions();
+            
             camera = new THREE.PerspectiveCamera(50, wrapper.clientWidth / wrapper.clientHeight, 0.1, 1500);
-            camera.position.set(0, 0, 110);
+            camera.position.set(0, 0, 130);
 
             renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
             renderer.setSize(wrapper.clientWidth, wrapper.clientHeight);
@@ -270,27 +225,46 @@
             createStarField();
             createSnow();
             createSurfaceSnow();
-            // 新增表面雪花
 
-            // *** 初始化：强制重置颜色 ***
             updateColorTheme(true);
             scene.add(mainGroup);
             window.addEventListener('resize', onWindowResize);
+            
+            // [新增] 启动自动加载照片
+            loadPredefinedPhotos();
+        }
+
+        // [新增] 自动加载 1.jpg 到 18.jpg
+        function loadPredefinedPhotos() {
+            const photoCount = 18; // 照片总数
+            console.log(`开始加载 ${photoCount} 张照片...`);
+            
+            for (let i = 1; i <= photoCount; i++) {
+                const img = new Image();
+                // 假设图片在同一目录下，文件名为 1.jpg, 2.jpg...
+                // 注意：文件名大小写敏感，请确保后缀是 .jpg (小写)
+                img.src = `${i}.jpg`; 
+                
+                img.onload = () => {
+                    console.log(`照片 ${i}.jpg 加载成功`);
+                    addPhotoMesh(img);
+                };
+                
+                img.onerror = () => {
+                    console.warn(`照片 ${i}.jpg 未找到，请确保文件已上传且命名正确。`);
+                };
+            }
         }
 
         function updateDimensions() {
             const targetAspect = 4 / 3;
             const windowAspect = window.innerWidth / window.innerHeight;
             let width, height;
-
             if (windowAspect > targetAspect) {
-                height = window.innerHeight;
-                width = height * targetAspect;
+                height = window.innerHeight; width = height * targetAspect;
             } else {
-                width = window.innerWidth;
-                height = width / targetAspect;
+                width = window.innerWidth; height = width / targetAspect;
             }
-
             const wrapper = document.getElementById('canvas-wrapper');
             wrapper.style.width = width + 'px';
             wrapper.style.height = height + 'px';
@@ -301,62 +275,26 @@
             const canvas = document.createElement('canvas');
             canvas.width = 64; canvas.height = 64;
             const ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#ff55a3'; 
-            ctx.fillRect(0, 0, 64, 64);
+            ctx.fillStyle = '#ff55a3'; ctx.fillRect(0, 0, 64, 64);
             ctx.fillStyle = '#ffffff';
             for(let i=-64; i<64; i+=16) {
-                ctx.beginPath();
-                ctx.moveTo(i, 0);
-                ctx.lineTo(i+8, 0);
-                ctx.lineTo(i+8+64, 64);
-                ctx.lineTo(i+64, 64);
-                ctx.fill();
+                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i+8, 0);
+                ctx.lineTo(i+8+64, 64); ctx.lineTo(i+64, 64); ctx.fill();
             }
             const tex = new THREE.CanvasTexture(canvas);
-            tex.wrapS = THREE.RepeatWrapping;
-            tex.wrapT = THREE.RepeatWrapping;
-            tex.repeat.set(1, 4);
-            tex.colorSpace = THREE.SRGBColorSpace;
+            tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(1, 4); tex.colorSpace = THREE.SRGBColorSpace;
             return tex;
         }
 
         function createMaterialsAndMeshes() {
-            // 1. 金球材质
-            const sphereMat = new THREE.MeshStandardMaterial({
-                color: 0xffffff, 
-                metalness: 1.0, roughness: 0.2, 
-                emissive: 0xffcc00, emissiveIntensity: 0.6 
-            });
-            // 2. 金装饰材质 (星星/圆环)
-            const shapeMat = new THREE.MeshStandardMaterial({
-                color: 0xffffff,
-                metalness: 1.0, roughness: 0.2,
-                emissive: 0xffcc00, emissiveIntensity: 0.6
-            });
-            // 3. 祖母绿材质
-            const emeraldMat = new THREE.MeshPhysicalMaterial({
-                color: 0xffffff, 
-                metalness: 0.1, roughness: 0.1, transmission: 0.6, thickness: 1.5, 
-                emissive: 0x004422, emissiveIntensity: 0.4, clearcoat: 1.0
-            });
-            // 4. 心形材质
-            const heartMat = new THREE.MeshPhysicalMaterial({
-                color: 0xffffff, metalness: 0.2, roughness: 0.1, transmission: 0.4, thickness: 2.0, 
-                emissive: 0x661100, emissiveIntensity: 0.5, clearcoat: 1.0
-            });
-            // 5. 糖果材质
-            const candyMat = new THREE.MeshStandardMaterial({
-                map: createStripeTexture(), roughness: 0.3, metalness: 0.1,
-                emissive: 0x442233, emissiveIntensity: 0.2
-            });
-            // 6. 礼物盒 (不变)
-            const giftBoxMat = new THREE.MeshStandardMaterial({
-                color: 0xdd0000, roughness: 0.4, metalness: 0.3
-            });
-            // 7. 礼物丝带 (不变)
-            const staticGoldMat = new THREE.MeshStandardMaterial({
-                 color: 0xffd700, metalness: 1.0, roughness: 0.2, emissive: 0xffcc00, emissiveIntensity: 0.6
-            });
+            const sphereMat = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 1.0, roughness: 0.2, emissive: 0xffcc00, emissiveIntensity: 0.6 });
+            const shapeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 1.0, roughness: 0.2, emissive: 0xffcc00, emissiveIntensity: 0.6 });
+            const emeraldMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, metalness: 0.1, roughness: 0.1, transmission: 0.6, thickness: 1.5, emissive: 0x004422, emissiveIntensity: 0.4, clearcoat: 1.0 });
+            const heartMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, metalness: 0.2, roughness: 0.1, transmission: 0.4, thickness: 2.0, emissive: 0x661100, emissiveIntensity: 0.5, clearcoat: 1.0 });
+            const candyMat = new THREE.MeshStandardMaterial({ map: createStripeTexture(), roughness: 0.3, metalness: 0.1, emissive: 0x442233, emissiveIntensity: 0.2 });
+            const giftBoxMat = new THREE.MeshStandardMaterial({ color: 0xdd0000, roughness: 0.4, metalness: 0.3 });
+            const staticGoldMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 1.0, roughness: 0.2, emissive: 0xffcc00, emissiveIntensity: 0.6 });
 
             const sphereGeo = new THREE.SphereGeometry(0.42, 16, 16); 
             const boxGeo = new THREE.BoxGeometry(0.9, 0.9, 0.9);      
@@ -371,60 +309,33 @@
             heartShape.bezierCurveTo(60, 77, 80, 55, 80, 35);
             heartShape.bezierCurveTo(80, 35, 80, 0, 50, 0);
             heartShape.bezierCurveTo(35, 0, 25, 25, 25, 25);
-            const heartGeo = new THREE.ExtrudeGeometry(heartShape, { 
-                depth: 10, bevelEnabled: true, bevelSegments: 12, bevelSize: 18, bevelThickness: 18 
-            });
-            heartGeo.scale(0.014, 0.014, 0.014); 
-            heartGeo.center(); heartGeo.rotateX(Math.PI);
+            const heartGeo = new THREE.ExtrudeGeometry(heartShape, { depth: 10, bevelEnabled: true, bevelSegments: 12, bevelSize: 18, bevelThickness: 18 });
+            heartGeo.scale(0.014, 0.014, 0.014); heartGeo.center(); heartGeo.rotateX(Math.PI);
 
-            // 圆润的胖胖五角星形状
             const smallStarShape = new THREE.Shape();
-            const numPoints = 5;
-            const outerR = 0.65;
-            const innerR = 0.35; 
-            
+            const numPoints = 5; const outerR = 0.65; const innerR = 0.35; 
             smallStarShape.moveTo(0, outerR);
             for(let i = 1; i <= numPoints * 2; i++) {
                 const angle = (i / (numPoints * 2)) * Math.PI * 2 + Math.PI / 2;
                 const r = (i % 2 === 0) ? outerR : innerR;
-                const x = Math.cos(angle) * r;
-                const y = Math.sin(angle) * r;
                 const cpAngle = angle - (Math.PI / (numPoints * 2)) * 0.5;
                 const cpR = r + 0.05; 
-                smallStarShape.quadraticCurveTo(
-                    Math.cos(cpAngle)*cpR, Math.sin(cpAngle)*cpR,
-                    x, y
-                );
+                smallStarShape.quadraticCurveTo(Math.cos(cpAngle)*cpR, Math.sin(cpAngle)*cpR, Math.cos(angle)*r, Math.sin(angle)*r);
             }
-            
-            const smallStarGeo = new THREE.ExtrudeGeometry(smallStarShape, { 
-                depth: 0.3, 
-                bevelEnabled: true, 
-                bevelThickness: 0.15, 
-                bevelSize: 0.1,       
-                bevelSegments: 6      
-            });
+            const smallStarGeo = new THREE.ExtrudeGeometry(smallStarShape, { depth: 0.3, bevelEnabled: true, bevelThickness: 0.15, bevelSize: 0.1, bevelSegments: 6 });
             smallStarGeo.center();
 
-            const path = new THREE.CatmullRomCurve3([
-                new THREE.Vector3(0, -0.9, 0),
-                new THREE.Vector3(0, 0.45, 0),
-                new THREE.Vector3(0.25, 0.9, 0),
-                new THREE.Vector3(0.6, 0.65, 0)
-            ]);
-            const candyGeo = new THREE.TubeGeometry(path, 12, 0.14, 8, false); 
-            candyGeo.center();
+            const path = new THREE.CatmullRomCurve3([ new THREE.Vector3(0, -0.9, 0), new THREE.Vector3(0, 0.45, 0), new THREE.Vector3(0.25, 0.9, 0), new THREE.Vector3(0.6, 0.65, 0) ]);
+            const candyGeo = new THREE.TubeGeometry(path, 12, 0.14, 8, false); candyGeo.center();
 
             const giftGeo = new THREE.BoxGeometry(1.0, 1.0, 1.0);
             const ribbonV = new THREE.BoxGeometry(1.05, 1.05, 0.18);
             
-            // InstancedMesh
             goldSphereMesh = createInstancedMesh(sphereGeo, sphereMat, CONFIG.goldCount, logicData.gold, 'sphere');
             heartMesh = createInstancedMesh(heartGeo, heartMat, CONFIG.gemCount, logicData.heart, 'heart');
             emeraldBoxMesh = createInstancedMesh(boxGeo, emeraldMat, CONFIG.emeraldBoxCount, logicData.emeraldBox, 'emerald');
             emeraldTetraMesh = createInstancedMesh(tetraGeo, emeraldMat, CONFIG.emeraldTetraCount, logicData.emeraldTetra, 'tetra');
             
-            // 形状装饰
             let torusMeshObj = createInstancedMesh(torusGeo, shapeMat, CONFIG.torusCount, logicData.torus, 'gold_shape');
             let starMeshObj = createInstancedMesh(smallStarGeo, shapeMat, CONFIG.smallStarCount, logicData.smallStar, 'gold_shape');
             goldShapeMesh = [torusMeshObj, starMeshObj]; 
@@ -434,41 +345,27 @@
             giftRibbonMesh = new THREE.InstancedMesh(ribbonV, staticGoldMat, CONFIG.giftCount * 2); 
             giftBoxMesh.castShadow = true; giftBoxMesh.receiveShadow = true;
             giftRibbonMesh.castShadow = true; giftRibbonMesh.receiveShadow = true;
-            mainGroup.add(giftBoxMesh);
-            mainGroup.add(giftRibbonMesh);
+            mainGroup.add(giftBoxMesh); mainGroup.add(giftRibbonMesh);
             generateLogicData(CONFIG.giftCount, logicData.gift);
-            
-            // --- 顶部的五角星 (单体Mesh) ---
+
             const bigStarShape = new THREE.Shape();
-            const bigOuterR = 4.5;
-            const bigInnerR = 2.4; // 胖一点
+            const bigOuterR = 4.5; const bigInnerR = 2.4; 
             bigStarShape.moveTo(0, bigOuterR);
             for(let i = 1; i <= numPoints * 2; i++) {
                 const angle = (i / (numPoints * 2)) * Math.PI * 2 + Math.PI / 2;
                 const r = (i % 2 === 0) ? bigOuterR : bigInnerR;
-                const x = Math.cos(angle) * r;
-                const y = Math.sin(angle) * r;
                 const cpAngle = angle - (Math.PI / (numPoints * 2)) * 0.5;
                 const cpR = r + 0.2; 
-                bigStarShape.quadraticCurveTo(Math.cos(cpAngle)*cpR, Math.sin(cpAngle)*cpR, x, y);
+                bigStarShape.quadraticCurveTo(Math.cos(cpAngle)*cpR, Math.sin(cpAngle)*cpR, Math.cos(angle)*r, Math.sin(angle)*r);
             }
-            
-            const starGeo = new THREE.ExtrudeGeometry(bigStarShape, {
-                depth: 1.8, bevelEnabled: true, bevelThickness: 0.8, bevelSize: 0.6, bevelSegments: 12 
-            });
+            const starGeo = new THREE.ExtrudeGeometry(bigStarShape, { depth: 1.8, bevelEnabled: true, bevelThickness: 0.8, bevelSize: 0.6, bevelSegments: 12 });
             starGeo.center();
             const starMat = sphereMat.clone(); 
             topStarMesh = new THREE.Mesh(starGeo, starMat);
-            const treeTopY = CONFIG.treeHeight/2;
-            topStarMesh.userData = { 
-                treePos: new THREE.Vector3(0, treeTopY + 3.0, 0), 
-                scatterPos: new THREE.Vector3(0, 60, 0)
-            };
+            topStarMesh.userData = { treePos: new THREE.Vector3(0, CONFIG.treeHeight/2 + 3.0, 0), scatterPos: new THREE.Vector3(0, 60, 0) };
             topStarMesh.position.copy(topStarMesh.userData.treePos);
-            const starLight = new THREE.PointLight(0xffaa00, 5, 20);
-            topStarMesh.add(starLight);
-            mainGroup.add(topStarMesh);
-            logicData.star = topStarMesh;
+            topStarMesh.add(new THREE.PointLight(0xffaa00, 5, 20));
+            mainGroup.add(topStarMesh); logicData.star = topStarMesh;
         }
 
         function createInstancedMesh(geo, mat, count, dataArray, type) {
@@ -477,9 +374,7 @@
             mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(count * 3), 3);
             mesh.castShadow = true; mesh.receiveShadow = true;
             mainGroup.add(mesh);
-            if (dataArray && dataArray.length === 0) {
-                 generateLogicData(count, dataArray, type);
-            }
+            if (dataArray && dataArray.length === 0) generateLogicData(count, dataArray, type);
             return mesh;
         }
 
@@ -495,96 +390,56 @@
                 const treePos = new THREE.Vector3(r * Math.cos(theta), h, r * Math.sin(theta));
                 const scatterPos = randomSpherePoint(50 + Math.random()*45);
                 
-                // --- 颜色Palette ---
                 let colorNormal = new THREE.Color();
                 let colorPink = new THREE.Color();
                 
-                if (type === 'emerald') { // 绿色方块
-                    colorNormal.setHex(0x00d060);
-                    colorPink.setHex(0xffdde5);   // 淡粉背景
-                } else if (type === 'tetra') { // 绿色四面体
-                    colorNormal.setHex(0x00d060);
-                    colorPink.setHex(0xe6e6fa);   // 淡紫
-                } else if (type === 'sphere') { // 金球 -> 粉球 (修正后)
-                    colorNormal.setHex(0xffd700);
-                    colorPink.setHex(0xffb6c1);   // LightPink (比Pale Pink稍微深一点，但不艳)
-                } else if (type === 'gold_shape') { // 金饰 (五角星)
-                    colorNormal.setHex(0xffd700);
-                    colorPink.setHex(0xffe6ea);   // 保持极淡粉，与圆球区分
-                } else if (type === 'heart') { // 爱心
-                    colorNormal.setHex(0xff3300);
-                    colorPink.setHex(0xff69b4);   
-                } else {
-                     colorNormal.setHex(0xffffff);
-                    colorPink.setHex(0xffe4e1);
-                }
+                if (type === 'emerald') { colorNormal.setHex(0x00d060); colorPink.setHex(0xffdde5); }
+                else if (type === 'tetra') { colorNormal.setHex(0x00d060); colorPink.setHex(0xe6e6fa); }
+                else if (type === 'sphere') { colorNormal.setHex(0xffd700); colorPink.setHex(0xffb6c1); }
+                else if (type === 'gold_shape') { colorNormal.setHex(0xffd700); colorPink.setHex(0xffe6ea); }
+                else if (type === 'heart') { colorNormal.setHex(0xff3300); colorPink.setHex(0xff69b4); }
+                else { colorNormal.setHex(0xffffff); colorPink.setHex(0xffe4e1); }
 
                 array.push({
-                    treePos: treePos,
-                    scatterPos: scatterPos,
-                    currentPos: treePos.clone(),
+                    treePos: treePos, scatterPos: scatterPos, currentPos: treePos.clone(),
                     scale: 0.5 + Math.random() * 0.8,
                     rotSpeed: new THREE.Euler(Math.random()*0.02, Math.random()*0.02, Math.random()*0.02),
                     rotation: new THREE.Euler(Math.random()*Math.PI, Math.random()*Math.PI, 0),
-                    colorNormal: colorNormal,
-                    colorPink: colorPink
+                    colorNormal: colorNormal, colorPink: colorPink
                 });
             }
         }
 
-        // --- 新增：表面悬浮雪花 ---
         function createSurfaceSnow() {
             const count = 800;
             const geo = new THREE.BufferGeometry();
-            const pos = [];
-            const origins = [];
-            // 记录初始位置，用于原地飘动
-
+            const pos = [], origins = [];
             for(let i=0; i<count; i++) {
-                // 使用和树类似的分布逻辑，但半径稍微大一点
-                const u = Math.random();
-                const hNorm = 1 - Math.pow(u, 0.55);
+                const u = Math.random(); const hNorm = 1 - Math.pow(u, 0.55);
                 const h = (hNorm - 0.5) * CONFIG.treeHeight;
-                const yRatio = 1.0 - hNorm;
-                const rMax = CONFIG.baseRadius * Math.pow(yRatio, 1.5);
-                // 半径偏移：让它浮在表面 2-6 单位处
+                const yRatio = 1.0 - hNorm; const rMax = CONFIG.baseRadius * Math.pow(yRatio, 1.5);
                 const r = rMax + 2.0 + Math.random() * 4.0;
                 const theta = Math.random() * Math.PI * 2;
-                
-                const x = r * Math.cos(theta);
-                const z = r * Math.sin(theta);
-                pos.push(x, h, z);
-                origins.push(x, h, z);
+                const x = r * Math.cos(theta); const z = r * Math.sin(theta);
+                pos.push(x, h, z); origins.push(x, h, z);
             }
-            
             geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
             geo.userData = { origins: new Float32Array(origins) };
-
             const mat = new THREE.PointsMaterial({
-                color: 0xffffff,
-                size: 0.8,
-                map: new THREE.TextureLoader().load('https://threejs.org/examples/textures/sprites/snowflake2.png'),
-                transparent: true,
-                opacity: 0.0, // 初始不可见，由 updateSurfaceSnow 控制
-                depthWrite: false,
-                blending: THREE.AdditiveBlending
+                color: 0xffffff, size: 0.8, map: new THREE.TextureLoader().load('https://threejs.org/examples/textures/sprites/snowflake2.png'),
+                transparent: true, opacity: 0.0, depthWrite: false, blending: THREE.AdditiveBlending
             });
-            surfaceSnowParticles = new THREE.Points(geo, mat);
-            mainGroup.add(surfaceSnowParticles);
+            surfaceSnowParticles = new THREE.Points(geo, mat); mainGroup.add(surfaceSnowParticles);
         }
 
         function updateSurfaceSnow() {
             const targetOpacity = 0.8 * (1.0 - ribbonScatterScale);
             surfaceSnowParticles.material.opacity = targetOpacity;
-            
             if (targetOpacity < 0.01) return;
             const positions = surfaceSnowParticles.geometry.attributes.position.array;
             const origins = surfaceSnowParticles.geometry.userData.origins;
-
             for(let i=0; i<positions.length/3; i++) {
-                const ix = i * 3;
-                const iy = i * 3 + 1;
-                const iz = i * 3 + 2;
+                const ix = i*3, iy = i*3+1, iz = i*3+2;
                 positions[ix] = origins[ix] + Math.sin(time * 0.5 + i) * 0.5;
                 positions[iy] = origins[iy] + Math.cos(time * 0.3 + i * 2) * 0.5;
                 positions[iz] = origins[iz] + Math.sin(time * 0.4 + i * 3) * 0.5;
@@ -592,70 +447,47 @@
             surfaceSnowParticles.geometry.attributes.position.needsUpdate = true;
         }
 
-        // 核心：更新颜色主题
         function updateColorTheme(force = false) {
             const target = isPinkTheme ? 1.0 : 0.0;
-            
             if (Math.abs(themeProgress - target) > 0.001 || force) {
                 themeProgress += (target - themeProgress) * 0.05;
                 if(force) themeProgress = target;
+                
+                document.body.className = isPinkTheme ? 'theme-pink' : 'theme-gold';
 
-                // --- 1. 金球 (Sphere) ---
                 applyColorToMesh(goldSphereMesh, logicData.gold);
-                // 材质变化
                 goldSphereMesh.material.metalness = THREE.MathUtils.lerp(1.0, 0.0, themeProgress);
                 goldSphereMesh.material.roughness = THREE.MathUtils.lerp(0.2, 1.0, themeProgress);
-                const goldEmit = new THREE.Color(0xffcc00);
-                const pinkEmit = new THREE.Color(0xffb6c1); 
-                goldSphereMesh.material.emissive.lerpColors(goldEmit, pinkEmit, themeProgress);
+                goldSphereMesh.material.emissive.lerpColors(new THREE.Color(0xffcc00), new THREE.Color(0xffb6c1), themeProgress);
                 goldSphereMesh.material.emissiveIntensity = THREE.MathUtils.lerp(0.6, 0.3, themeProgress);
                 
-                // --- 2. 顶部五角星 (单体Mesh) ---
                 const starMat = topStarMesh.material;
-                const starGold = new THREE.Color(0xffd700);
                 const starPink = new THREE.Color(0xffe6ea);
-                starMat.color.lerpColors(starGold, starPink, themeProgress);
+                starMat.color.lerpColors(new THREE.Color(0xffd700), starPink, themeProgress);
                 starMat.metalness = THREE.MathUtils.lerp(0.8, 0.0, themeProgress);
                 starMat.roughness = THREE.MathUtils.lerp(0.2, 1.0, themeProgress);
-                const starEmitGold = new THREE.Color(0xffaa00);
-                starMat.emissive.lerpColors(starEmitGold, starPink, themeProgress);
+                starMat.emissive.lerpColors(new THREE.Color(0xffaa00), starPink, themeProgress);
                 starMat.emissiveIntensity = THREE.MathUtils.lerp(2.0, 0.4, themeProgress);
 
-                // --- 3. 祖母绿 (Box & Tetra) ---
                 applyColorToMesh(emeraldBoxMesh, logicData.emeraldBox);
                 applyColorToMesh(emeraldTetraMesh, logicData.emeraldTetra);
-                
-                const glassMatBox = emeraldBoxMesh.material;
-                const glassMatTetra = emeraldTetraMesh.material;
-
+                const glassMatBox = emeraldBoxMesh.material, glassMatTetra = emeraldTetraMesh.material;
                 const targetTrans = THREE.MathUtils.lerp(0.6, 0.0, themeProgress);
-                glassMatBox.transmission = targetTrans;
-                glassMatTetra.transmission = targetTrans;
-
                 const targetRough = THREE.MathUtils.lerp(0.1, 1.0, themeProgress);
-                glassMatBox.roughness = targetRough;
-                glassMatTetra.roughness = targetRough;
-
                 const targetMetal = THREE.MathUtils.lerp(0.1, 0.0, themeProgress);
-                glassMatBox.metalness = targetMetal;
-                glassMatTetra.metalness = targetMetal;
+                glassMatBox.transmission = targetTrans; glassMatTetra.transmission = targetTrans;
+                glassMatBox.roughness = targetRough; glassMatTetra.roughness = targetRough;
+                glassMatBox.metalness = targetMetal; glassMatTetra.metalness = targetMetal;
+                glassMatBox.emissive.lerpColors(new THREE.Color(0x004422), new THREE.Color(0x000000), themeProgress);
+                glassMatTetra.emissive.lerpColors(new THREE.Color(0x004422), new THREE.Color(0x000000), themeProgress);
 
-                const emeraldEmit = new THREE.Color(0x004422);
-                const noEmit = new THREE.Color(0x000000);
-                glassMatBox.emissive.lerpColors(emeraldEmit, noEmit, themeProgress);
-                glassMatTetra.emissive.lerpColors(emeraldEmit, noEmit, themeProgress);
-                
-                // --- 4. 装饰形状 (Torus/Star) ---
                 applyColorToMesh(goldShapeMesh[0], logicData.torus);
                 applyColorToMesh(goldShapeMesh[1], logicData.smallStar);
-                
                 const shapeMat = goldShapeMesh[0].material; 
                 shapeMat.metalness = THREE.MathUtils.lerp(1.0, 0.0, themeProgress);
                 shapeMat.roughness = THREE.MathUtils.lerp(0.2, 1.0, themeProgress);
-                const shapeEmitStart = new THREE.Color(0xffcc00);
-                shapeMat.emissive.lerpColors(shapeEmitStart, noEmit, themeProgress);
+                shapeMat.emissive.lerpColors(new THREE.Color(0xffcc00), new THREE.Color(0x000000), themeProgress);
                 
-                // --- 5. 心形 ---
                 applyColorToMesh(heartMesh, logicData.heart);
             }
         }
@@ -663,8 +495,7 @@
         function applyColorToMesh(mesh, data) {
             const tempC = new THREE.Color();
             for(let i=0; i<data.length; i++) {
-                const item = data[i];
-                tempC.lerpColors(item.colorNormal, item.colorPink, themeProgress);
+                tempC.lerpColors(data[i].colorNormal, data[i].colorPink, themeProgress);
                 mesh.setColorAt(i, tempC);
             }
             mesh.instanceColor.needsUpdate = true;
@@ -675,118 +506,61 @@
                 const points = [];
                 const startAngle = Math.random() * Math.PI * 2;
                 const spiralFreq = 3.0 + Math.random() * 2.0;
-                const hStart = -(CONFIG.treeHeight / 2) - 5; 
-                const hEnd = (CONFIG.treeHeight / 2);
+                const hStart = -(CONFIG.treeHeight / 2) - 5; const hEnd = (CONFIG.treeHeight / 2);
                 for(let t=0; t<=1; t+=0.005) { 
                     const h = hStart + t * (hEnd - hStart);
-                    const yRatio = 1.0 - t; 
-                    const trumpetCurve = Math.pow(yRatio, 1.4); 
+                    const yRatio = 1.0 - t; const trumpetCurve = Math.pow(yRatio, 1.4); 
                     const rBase = (CONFIG.baseRadius * trumpetCurve) + 2.0;
                     const theta = t * Math.PI * spiralFreq + startAngle; 
-                    const x = Math.cos(theta) * rBase;
-                    const z = Math.sin(theta) * rBase;
-                    
-                    points.push(new THREE.Vector3(x, h, z));
+                    points.push(new THREE.Vector3(Math.cos(theta) * rBase, h, Math.sin(theta) * rBase));
                 }
-                const curve = new THREE.CatmullRomCurve3(points);
                 ribbonsData.push({
-                    curve: curve,
-                    // 修改：让初始位置随机分布在整个树上，而不是都从底部开始
-                    progress: Math.random(), 
-                    speed: 0.0020 + Math.random() * 0.0005, 
-                    lengthScale: 0.8 + Math.random() * 0.4 
+                    curve: new THREE.CatmullRomCurve3(points), progress: Math.random(), 
+                    speed: 0.0020 + Math.random() * 0.0005, lengthScale: 0.8 + Math.random() * 0.4 
                 });
             }
-
             const ribbonGeo = new THREE.BoxGeometry(0.6, 0.1, 4.5);
-            // 初始：金色
             const ribbonMat = new THREE.MeshPhysicalMaterial({
-                color: 0xffcc00, 
-                metalness: 0.1, 
-                roughness: 0.2, 
-                emissive: 0xffaa00, 
-                emissiveIntensity: 0.4, 
-                transparent: true,
-                opacity: 0.5, 
-                side: THREE.DoubleSide
+                color: 0xffcc00, metalness: 0.1, roughness: 0.2, emissive: 0xffaa00, 
+                emissiveIntensity: 0.4, transparent: true, opacity: 0.5, side: THREE.DoubleSide
             });
             ribbonMesh = new THREE.InstancedMesh(ribbonGeo, ribbonMat, RIBBON_COUNT * RIBBON_SEGMENTS);
             mainGroup.add(ribbonMesh);
         }
 
         function updateRibbons() {
-            // 彩带：金 -> 淡粉
-            const ribbonNormal = new THREE.Color(0xffcc00);
-            const ribbonPink = new THREE.Color(0xffb7c5); 
-            const emitNormal = new THREE.Color(0xffaa00);
-            const emitPink = new THREE.Color(0xff69b4); 
-
-            ribbonMesh.material.color.lerpColors(ribbonNormal, ribbonPink, themeProgress);
-            ribbonMesh.material.emissive.lerpColors(emitNormal, emitPink, themeProgress);
-            
-            // 亮度调整
+            ribbonMesh.material.color.lerpColors(new THREE.Color(0xffcc00), new THREE.Color(0xffb7c5), themeProgress);
+            ribbonMesh.material.emissive.lerpColors(new THREE.Color(0xffaa00), new THREE.Color(0xff69b4), themeProgress);
             ribbonMesh.material.emissiveIntensity = THREE.MathUtils.lerp(0.4, 0.15, themeProgress);
+            
             const targetScale = (currentState === STATE.TREE) ? 0 : 1;
             ribbonScatterScale = THREE.MathUtils.lerp(ribbonScatterScale, targetScale, 0.05);
-            
-            // 状态控制：只有完全散开时才隐藏
-            if (currentState !== STATE.TREE && ribbonScatterScale > 0.99) {
-                ribbonMesh.visible = false;
-                return;
-            }
-
+            if (currentState !== STATE.TREE && ribbonScatterScale > 0.99) { ribbonMesh.visible = false; return; }
             ribbonMesh.visible = true;
-            // 渐入逻辑简化，因为是无限循环，不需要复杂的fade控制
-            if (currentState === STATE.TREE) {
-               ribbonFade = THREE.MathUtils.lerp(ribbonFade, 0.5, 0.05);
-            } else {
-                ribbonFade = THREE.MathUtils.lerp(ribbonFade, 0, 0.1);
-            }
-            
+            if (currentState === STATE.TREE) ribbonFade = THREE.MathUtils.lerp(ribbonFade, 0.5, 0.05);
+            else ribbonFade = THREE.MathUtils.lerp(ribbonFade, 0, 0.1);
             ribbonMesh.material.opacity = ribbonFade;
+
             let instanceIdx = 0;
-            
             ribbonsData.forEach((data, ribbonIdx) => {
-                // [关键修改]：无限累加，不再重置回 -0.2
                 data.progress += data.speed;
-
                 for(let j=0; j<RIBBON_SEGMENTS; j++) {
-                    const lag = j * 0.0005 * data.lengthScale; 
-                    
-                    // [关键修改]：使用取模运算 (% 1.0) 实现无缝循环
-                    // 不管 progress 多大，t 始终在 0~1 之间
-                    let tRaw = (data.progress - lag) % 1.0;
-                    if (tRaw < 0) tRaw += 1.0; // 处理负数情况
-
-                    // [关键修改]：边缘柔化 (Fade In/Out)
-                    // 在 t=0 (底部) 和 t=1 (顶部) 附近让 scale 归零
-                    // 这样从顶部跳到底部时，因为是看不见的，所以不会有视觉跳跃
-                    let s = 1.0;
-                    const edgeThreshold = 0.15; // 边缘区域占 15%
-                    
-                    if (tRaw < edgeThreshold) {
-                        // 底部渐入
-                        s = tRaw / edgeThreshold; 
-                    } else if (tRaw > (1.0 - edgeThreshold)) {
-                        // 顶部渐出
-                        s = (1.0 - tRaw) / edgeThreshold;
-                    }
-                    
-                    // 增加一点正弦波动，增加随机感
+                    let tRaw = (data.progress - j * 0.0005 * data.lengthScale) % 1.0;
+                    if (tRaw < 0) tRaw += 1.0;
+                    let s = 1.0; const edgeThreshold = 0.15;
+                    if (tRaw < edgeThreshold) s = tRaw / edgeThreshold; 
+                    else if (tRaw > (1.0 - edgeThreshold)) s = (1.0 - tRaw) / edgeThreshold;
                     s *= (0.8 + 0.2 * Math.sin(time * 2 + ribbonIdx));
-
+                    
                     const pos = data.curve.getPoint(tRaw);
                     const tangent = data.curve.getTangent(tRaw);
-                    
                     const dir = pos.clone().setY(0).normalize();
                     const spread = ribbonScatterScale * 50.0;
                     
                     dummy.position.copy(pos).add(dir.multiplyScalar(spread));
                     if(ribbonScatterScale > 0.1) dummy.position.y += Math.sin(time*5+ribbonIdx)*ribbonScatterScale*5;
                     dummy.lookAt(dummy.position.clone().add(tangent));
-                    dummy.rotateZ(ribbonIdx * 0.1); 
-                    dummy.scale.set(s, 1, s);
-                    dummy.updateMatrix();
+                    dummy.rotateZ(ribbonIdx * 0.1); dummy.scale.set(s, 1, s); dummy.updateMatrix();
                     ribbonMesh.setMatrixAt(instanceIdx++, dummy.matrix);
                 }
             });
@@ -804,28 +578,22 @@
             const pos = [];
             for(let i=0; i<1500; i++) pos.push((Math.random()-0.5)*1500, (Math.random()-0.5)*1500, (Math.random()-0.5)*1500);
             geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-            const stars = new THREE.Points(geo, new THREE.PointsMaterial({color: 0xaaaaaa, size: 1.5, transparent: true, opacity: 0.6, fog: false}));
-            scene.add(stars);
+            scene.add(new THREE.Points(geo, new THREE.PointsMaterial({color: 0xaaaaaa, size: 1.5, transparent: true, opacity: 0.6, fog: false})));
         }
 
         function createSnow() {
             const snowGeo = new THREE.BufferGeometry();
-            const snowPos = [];
-            const snowVel = [];
-            const snowCount = 2000;
-            for(let i=0; i<snowCount; i++) {
+            const snowPos = [], snowVel = [];
+            for(let i=0; i<2000; i++) {
                 snowPos.push((Math.random()-0.5)*120, (Math.random()-0.5)*200, (Math.random()-0.5)*120);
                 snowVel.push((Math.random()-0.5)*0.02, -Math.random()*0.05 - 0.02, (Math.random()-0.5)*0.02);
             }
             snowGeo.setAttribute('position', new THREE.Float32BufferAttribute(snowPos, 3));
             snowGeo.userData.velocities = new Float32Array(snowVel);
-
-            const snowMat = new THREE.PointsMaterial({
-                color: 0xffffff, size: 0.8, 
-                map: new THREE.TextureLoader().load('https://threejs.org/examples/textures/sprites/snowflake2.png'),
+            snowParticles = new THREE.Points(snowGeo, new THREE.PointsMaterial({
+                color: 0xffffff, size: 0.8, map: new THREE.TextureLoader().load('https://threejs.org/examples/textures/sprites/snowflake2.png'),
                 blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.9
-            });
-            snowParticles = new THREE.Points(snowGeo, snowMat);
+            }));
             scene.add(snowParticles);
         }
 
@@ -833,14 +601,10 @@
             const positions = snowParticles.geometry.attributes.position.array;
             const velocities = snowParticles.geometry.userData.velocities;
             for(let i=0; i<positions.length/3; i++) {
-                positions[i*3]   += velocities[i*3];
-                positions[i*3+1] += velocities[i*3+1];
-                positions[i*3+2] += velocities[i*3+2];
+                positions[i*3] += velocities[i*3]; positions[i*3+1] += velocities[i*3+1]; positions[i*3+2] += velocities[i*3+2];
                 if(positions[i*3+1] < -60) positions[i*3+1] = 80 + Math.random()*20;
-                if(positions[i*3] > 70) positions[i*3] = -70;
-                if(positions[i*3] < -70) positions[i*3] = 70;
-                if(positions[i*3+2] > 70) positions[i*3+2] = -70;
-                if(positions[i*3+2] < -70) positions[i*3+2] = 70;
+                if(positions[i*3] > 70) positions[i*3] = -70; if(positions[i*3] < -70) positions[i*3] = 70;
+                if(positions[i*3+2] > 70) positions[i*3+2] = -70; if(positions[i*3+2] < -70) positions[i*3+2] = 70;
             }
             snowParticles.geometry.attributes.position.needsUpdate = true;
             snowParticles.rotation.y += 0.0005;
@@ -849,60 +613,65 @@
         function animate() {
             requestAnimationFrame(animate);
             time += 0.01;
-
-            // 颜色主题更新
             updateColorTheme();
 
             updateInstancedMesh(goldSphereMesh, logicData.gold);
             updateInstancedMesh(heartMesh, logicData.heart);
             updateInstancedMesh(emeraldBoxMesh, logicData.emeraldBox);
             updateInstancedMesh(emeraldTetraMesh, logicData.emeraldTetra);
-            
             updateInstancedMesh(goldShapeMesh[0], logicData.torus);
             updateInstancedMesh(goldShapeMesh[1], logicData.smallStar);
             updateInstancedMesh(candyMesh, logicData.candy);
-            
-            updateGifts();
-            updatePhotos();
-            updateRibbons();
-            updateSnow();
-            updateSurfaceSnow();
-            // 更新表面雪花
+            updateGifts(); updatePhotos(); updateRibbons(); updateSnow(); updateSurfaceSnow();
 
             if (logicData.star) {
-                let target = currentState === STATE.TREE ?
-                logicData.star.userData.treePos : logicData.star.userData.scatterPos;
+                let target = currentState === STATE.TREE ? logicData.star.userData.treePos : logicData.star.userData.scatterPos;
                 logicData.star.position.lerp(target, 0.05);
                 if (currentState === STATE.TREE) {
-                    logicData.star.rotation.y += 0.01;
-                    logicData.star.rotation.x = 0; logicData.star.rotation.z = 0;
+                    logicData.star.rotation.y += 0.01; logicData.star.rotation.x = 0; logicData.star.rotation.z = 0;
                 } else {
-                    logicData.star.rotation.x += 0.01;
-                    logicData.star.rotation.y += 0.01;
+                    logicData.star.rotation.x += 0.01; logicData.star.rotation.y += 0.01;
                 }
             }
-
+            
             if (currentState === STATE.ZOOM) {
-                rotationVelocity.x = 0;
-                rotationVelocity.y = 0;
+                rotationVelocity.x = 0; rotationVelocity.y = 0;
             } 
             else if (currentState === STATE.SCATTER) {
                 if (isHandPresent) {
-                    const deltaX = handPos.x - lastHandPos.x;
-                    const deltaY = handPos.y - lastHandPos.y;
-                    if (deltaX > 0.002) rotationVelocity.y += deltaX * 0.15;
-                    if (Math.abs(deltaY) > 0.002) rotationVelocity.x += deltaY * 0.05;
-                    lastHandPos.x = handPos.x; lastHandPos.y = handPos.y;
+                    const centerX = 0.5;
+                    const centerY = 0.5;
+                    const deadZone = 0.08; 
+                    
+                    const maxSpeed = 0.035; 
+
+                    const diffX = handPos.x - centerX; 
+                    const diffY = handPos.y - centerY; 
+                    
+                    const distance = Math.sqrt(diffX*diffX + diffY*diffY);
+
+                    if (distance > deadZone) {
+                        const speedFactor = (distance - deadZone) * maxSpeed * 3.0;
+                        const dirX = diffX / distance;
+                        const dirY = diffY / distance;
+
+                        rotationVelocity.y = dirX * speedFactor;
+                        rotationVelocity.x = dirY * speedFactor;
+                    } else {
+                        rotationVelocity.y *= 0.9;
+                        rotationVelocity.x *= 0.9;
+                    }
+                } else {
+                    rotationVelocity.y *= 0.95; 
+                    rotationVelocity.x *= 0.95;
                 }
-                rotationVelocity.y = Math.min(rotationVelocity.y, 0.05);
-                rotationVelocity.x = Math.max(Math.min(rotationVelocity.x, 0.02), -0.02);
+                
                 mainGroup.rotation.y += rotationVelocity.y;
                 mainGroup.rotation.x += rotationVelocity.x;
-                rotationVelocity.y *= 0.96; rotationVelocity.x *= 0.92; 
-                mainGroup.rotation.x *= 0.98;
-            } else if (currentState === STATE.TREE) {
+            } 
+            else if (currentState === STATE.TREE) {
                 mainGroup.rotation.y += 0.002;
-                mainGroup.rotation.x *= 0.95;
+                mainGroup.rotation.x *= 0.95; 
             }
 
             composer.render();
@@ -916,15 +685,11 @@
                 if (currentState === STATE.SCATTER) item.currentPos.y += Math.sin(time + i)*0.005;
 
                 item.currentPos.lerp(target, 0.08);
-                item.rotation.x += item.rotSpeed.x;
-                item.rotation.y += item.rotSpeed.y;
-                let s = item.scale;
-                if(currentState === STATE.ZOOM) s = item.scale * 0.6; 
+                item.rotation.x += item.rotSpeed.x; item.rotation.y += item.rotSpeed.y;
+                let s = item.scale; if(currentState === STATE.ZOOM) s = item.scale * 0.6; 
 
-                dummy.position.copy(item.currentPos);
-                dummy.rotation.copy(item.rotation);
-                dummy.scale.setScalar(s);
-                dummy.updateMatrix();
+                dummy.position.copy(item.currentPos); dummy.rotation.copy(item.rotation);
+                dummy.scale.setScalar(s); dummy.updateMatrix();
                 mesh.setMatrixAt(i, dummy.matrix);
             }
             mesh.instanceMatrix.needsUpdate = true;
@@ -938,24 +703,15 @@
                 if(currentState === STATE.ZOOM) target = item.scatterPos;
                 if (currentState === STATE.SCATTER) item.currentPos.y += Math.sin(time + i)*0.005;
                 
-                item.currentPos.lerp(target, 0.08);
-                item.rotation.y += 0.005; 
-                let s = item.scale * 1.5;
-                if(currentState === STATE.ZOOM) s *= 0.6;
+                item.currentPos.lerp(target, 0.08); item.rotation.y += 0.005; 
+                let s = item.scale * 1.5; if(currentState === STATE.ZOOM) s *= 0.6;
 
-                dummy.position.copy(item.currentPos);
-                dummy.rotation.copy(item.rotation);
-                dummy.scale.setScalar(s);
-                dummy.updateMatrix();
-                
-                giftBoxMesh.setMatrixAt(i, dummy.matrix);
-                giftRibbonMesh.setMatrixAt(i*2, dummy.matrix);
-                dummy.rotateY(Math.PI/2);
-                dummy.updateMatrix();
-                giftRibbonMesh.setMatrixAt(i*2+1, dummy.matrix);
+                dummy.position.copy(item.currentPos); dummy.rotation.copy(item.rotation);
+                dummy.scale.setScalar(s); dummy.updateMatrix();
+                giftBoxMesh.setMatrixAt(i, dummy.matrix); giftRibbonMesh.setMatrixAt(i*2, dummy.matrix);
+                dummy.rotateY(Math.PI/2); dummy.updateMatrix(); giftRibbonMesh.setMatrixAt(i*2+1, dummy.matrix);
             }
-            giftBoxMesh.instanceMatrix.needsUpdate = true;
-            giftRibbonMesh.instanceMatrix.needsUpdate = true;
+            giftBoxMesh.instanceMatrix.needsUpdate = true; giftRibbonMesh.instanceMatrix.needsUpdate = true;
         }
 
         function updatePhotos() {
@@ -971,9 +727,7 @@
                 } else {
                     targetPos = currentState === STATE.TREE ? mesh.userData.treePos : mesh.userData.scatterPos;
                     if(currentState !== STATE.TREE) mesh.position.y += Math.sin(time+idx)*0.01;
-                    if (currentState === STATE.TREE) {
-                        mesh.rotation.y += 0.01;
-                    }
+                    if (currentState === STATE.TREE) mesh.rotation.y += 0.01;
                 }
                 mesh.position.lerp(targetPos, 0.1);
                 mesh.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.1);
@@ -983,10 +737,7 @@
         async function setupMediaPipe() {
             const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm");
             const handLandmarker = await HandLandmarker.createFromOptions(vision, {
-                baseOptions: {
-                    modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,
-                    delegate: "GPU"
-                },
+                baseOptions: { modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`, delegate: "GPU" },
                 runningMode: "VIDEO", numHands: 1
             });
             const video = document.getElementById("input-video");
@@ -1014,33 +765,21 @@
                     isHandPresent = true;
                     drawSkeleton(ctx, landmarks, canvas.width, canvas.height);
                     handleGesture(landmarks);
-                } else { isHandPresent = false;
-                }
+                } else { isHandPresent = false; }
             }
             requestAnimationFrame(() => predictWebcam(handLandmarker, video));
         }
         
         function drawSkeleton(ctx, landmarks, w, h) {
-            ctx.lineWidth = 3;
-            ctx.strokeStyle = '#00ff88'; ctx.fillStyle = '#ff0044';
-            const connections = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
-            ctx.beginPath();
-            for (let i = 0; i < connections.length; i++) {
-                const start = landmarks[connections[i][0]], end = landmarks[connections[i][1]];
-                ctx.moveTo(start.x * w, start.y * h); ctx.lineTo(end.x * w, end.y * h);
-            }
-            ctx.stroke();
-            for(let i=0; i<landmarks.length; i++) {
-                ctx.beginPath();
-                ctx.arc(landmarks[i].x * w, landmarks[i].y * h, 4, 0, 2 * Math.PI); ctx.fill();
-            }
+            // 不绘制任何辅助线
         }
 
         function handleGesture(landmarks) {
             const palmX = 1 - (landmarks[0].x + landmarks[9].x) / 2;
             const palmY = (landmarks[0].y + landmarks[9].y) / 2;
-            handPos.x = handPos.x * 0.8 + palmX * 0.2;
-            handPos.y = handPos.y * 0.8 + palmY * 0.2;
+            
+            handPos.x = handPos.x * 0.6 + palmX * 0.4;
+            handPos.y = handPos.y * 0.6 + palmY * 0.4;
 
             let folded = 0;
             [8,12,16,20].forEach(i => { 
@@ -1050,8 +789,8 @@
             const dPinch = Math.sqrt(Math.pow(landmarks[4].x-landmarks[8].x,2) + Math.pow(landmarks[4].y-landmarks[8].y,2));
             const isPinch = dPinch < 0.1; const isFist = folded >= 4;
             const isOpen = !isFist && !isPinch;
-
             const status = document.getElementById('status-text');
+
             if (isPinch && currentState === STATE.SCATTER) {
                 if (photoMeshes.length > 0) {
                     currentState = STATE.ZOOM;
@@ -1066,23 +805,19 @@
                     }
                 }
             } else if (isFist) {
-                if (currentState !== STATE.TREE) {
-                    isPinkTheme = !isPinkTheme;
-                }
-                currentState = STATE.TREE;
-                zoomTargetIndex = -1;
+                if (currentState !== STATE.TREE) isPinkTheme = !isPinkTheme;
+                currentState = STATE.TREE; zoomTargetIndex = -1;
                 rotationVelocity.x = 0; rotationVelocity.y = 0;
                 
-                if (isPinkTheme) {
-                    status.innerHTML = "状态: <span style='color:#ffc0cb'>梦幻少女粉</span>";
-                } else {
-                    status.innerHTML = "状态: <span style='color:#00ff00'>聚合圣诞树</span>";
-                }
-
+                mainGroup.rotation.y = mainGroup.rotation.y % (Math.PI * 2);
+                mainGroup.rotation.x = mainGroup.rotation.x % (Math.PI * 2);
+                if (mainGroup.rotation.y < 0) mainGroup.rotation.y += Math.PI * 2;
+                
+                if (isPinkTheme) status.innerHTML = "状态: <span style='color:#ffc0cb'>梦幻少女粉</span>";
+                else status.innerHTML = "状态: <span style='color:#00ff00'>聚合圣诞树</span>";
             } else if (isOpen) {
                 if(currentState !== STATE.SCATTER) {
                     currentState = STATE.SCATTER;
-                    lastHandPos.x = handPos.x; lastHandPos.y = handPos.y;
                 }
                 status.innerHTML = "状态: <span style='color:#00aaff'>星云散开</span>";
             }
@@ -1125,7 +860,6 @@
             const r = rMax * 0.9 + Math.random();
             const theta = Math.random() * Math.PI * 2;
             const treePos = new THREE.Vector3(r * Math.cos(theta), h_pos, r * Math.sin(theta));
-            
             mesh.userData = { treePos, scatterPos: randomSpherePoint(50) };
             mesh.position.copy(treePos);
             photoMeshes.push(mesh);
