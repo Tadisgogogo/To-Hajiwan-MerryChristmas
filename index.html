@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jewel Christmas Tree - Perfect Exposure</title>
+    <title>Jewel Christmas Tree - Final Bright</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -175,8 +175,8 @@
             renderer.setSize(wrapper.clientWidth, wrapper.clientHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
             renderer.toneMapping = THREE.ACESFilmicToneMapping;
-            // [修改 1] 降低曝光度，解决过曝
-            renderer.toneMappingExposure = 0.6; 
+            // [修改 1] 调高全局曝光 (0.6 -> 0.75)
+            renderer.toneMappingExposure = 0.75; 
             container.appendChild(renderer.domElement);
 
             const pmremGenerator = new THREE.PMREMGenerator(renderer);
@@ -198,8 +198,8 @@
 
             const bloomPass = new UnrealBloomPass(new THREE.Vector2(wrapper.clientWidth, wrapper.clientHeight), 1.5, 0.4, 0.85);
             bloomPass.threshold = 0.3;
-            // [修改 2] 降低辉光强度，防止照片边缘发白
-            bloomPass.strength = 0.5; 
+            // [修改 2] 调高辉光强度 (0.5 -> 0.65)
+            bloomPass.strength = 0.65; 
             bloomPass.radius = 0.8;
 
             composer = new EffectComposer(renderer);
@@ -812,13 +812,13 @@
 
             const mesh = new THREE.Mesh(
                 new THREE.PlaneGeometry(w, h),
-                // [修改 3] 最终材质修正，防止过曝
+                // [修改 3] 稍微提亮底色 (0x777777 -> 0x999999)
                 new THREE.MeshStandardMaterial({ 
                     map: tex, 
                     side: THREE.DoubleSide,
                     roughness: 0.4,
                     metalness: 0.1,
-                    color: 0x777777 // 深灰色，降低整体亮度
+                    color: 0x999999 
                 })
             );
             const frame = new THREE.Mesh(new THREE.BoxGeometry(w+0.1, h+0.1, 0.05), new THREE.MeshPhysicalMaterial({color:0xffd700, roughness:0.2, metalness:1}));
