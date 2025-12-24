@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jewel Christmas Tree - Final Bright</title>
+    <title>Jewel Christmas Tree - Musical Edition</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -96,6 +96,11 @@
 </head>
 <body class="theme-gold">
 
+    <audio id="bgMusic" loop>
+        <source src="music.mp3" type="audio/mpeg">
+        您的浏览器不支持音频播放。
+    </audio>
+
     <div id="canvas-wrapper">
         <div id="canvas-container"></div>
         <div id="title-overlay">Merry Christmas</div>
@@ -175,7 +180,6 @@
             renderer.setSize(wrapper.clientWidth, wrapper.clientHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
             renderer.toneMapping = THREE.ACESFilmicToneMapping;
-            // [修改 1] 调高全局曝光 (0.6 -> 0.75)
             renderer.toneMappingExposure = 0.75; 
             container.appendChild(renderer.domElement);
 
@@ -198,7 +202,6 @@
 
             const bloomPass = new UnrealBloomPass(new THREE.Vector2(wrapper.clientWidth, wrapper.clientHeight), 1.5, 0.4, 0.85);
             bloomPass.threshold = 0.3;
-            // [修改 2] 调高辉光强度 (0.5 -> 0.65)
             bloomPass.strength = 0.65; 
             bloomPass.radius = 0.8;
 
@@ -217,6 +220,23 @@
             window.addEventListener('resize', onWindowResize);
             
             loadPredefinedPhotos();
+
+            // [修改] 添加用户交互触发音乐播放逻辑
+            // 浏览器策略要求：必须有用户交互（点击/触摸）才能自动播放声音
+            const startMusic = () => {
+                const audio = document.getElementById('bgMusic');
+                if (audio) {
+                    audio.play().catch(e => console.log("等待交互以播放音乐"));
+                }
+                // 移除监听器，避免重复触发
+                window.removeEventListener('click', startMusic);
+                window.removeEventListener('touchstart', startMusic);
+                window.removeEventListener('keydown', startMusic);
+            };
+
+            window.addEventListener('click', startMusic);
+            window.addEventListener('touchstart', startMusic);
+            window.addEventListener('keydown', startMusic);
         }
 
         function loadPredefinedPhotos() {
@@ -742,10 +762,6 @@
             requestAnimationFrame(() => predictWebcam(handLandmarker, video));
         }
         
-        function drawSkeleton(ctx, landmarks, w, h) {
-            // 不绘制任何辅助线
-        }
-
         function handleGesture(allLandmarks) {
             const primaryHand = allLandmarks[0];
             const palmX = 1 - (primaryHand[0].x + primaryHand[9].x) / 2;
@@ -812,13 +828,12 @@
 
             const mesh = new THREE.Mesh(
                 new THREE.PlaneGeometry(w, h),
-                // [修改 3] 稍微提亮底色 (0x777777 -> 0x999999)
                 new THREE.MeshStandardMaterial({ 
                     map: tex, 
                     side: THREE.DoubleSide,
                     roughness: 0.4,
                     metalness: 0.1,
-                    color: 0x999999 
+                    color: 0x999999 // [修改] 中灰色，既不刺眼也不太暗
                 })
             );
             const frame = new THREE.Mesh(new THREE.BoxGeometry(w+0.1, h+0.1, 0.05), new THREE.MeshPhysicalMaterial({color:0xffd700, roughness:0.2, metalness:1}));
