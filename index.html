@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jewel Christmas Tree - 12 Photos Edition</title>
+    <title>Jewel Christmas Tree - Gesture Fixed</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -33,30 +33,36 @@
             display: block;
         }
         
-        /* 摄像头区域：圆角、半透明可见、无边框 */
+        /* 摄像头设置：半透明可见，方便调试手势位置 */
         #video-container {
             position: absolute;
-            top: 20px; right: 20px; width: 160px; height: 120px; z-index: 2;
+            top: 20px; right: 20px; width: 160px; height: 120px; z-index: 100;
             border-radius: 12px;
             overflow: hidden;
             transform: scaleX(-1); 
-            opacity: 0.6; /* 保持可见 */
+            opacity: 0.6; 
             pointer-events: none;
-            background: transparent; 
-            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            background: rgba(0, 0, 0, 0.3); /* 加一点深色背景确保能看清 */
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
         }
         #input-video { 
             width: 100%;
             height: 100%; object-fit: cover; 
             position: absolute; top: 0; left: 0;
         }
-        #skeleton-canvas {
+        /* 辅助状态提示：加载时显示，加载完隐藏 */
+        #status-indicator {
             position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 10;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ffd700;
+            font-size: 24px;
+            z-index: 200;
+            pointer-events: none;
+            text-shadow: 0 0 10px black;
+            font-family: sans-serif;
         }
 
-        /* 艺术字：底部沉浸式显示 */
         #title-overlay {
             position: absolute;
             bottom: 5%; 
@@ -73,22 +79,18 @@
             opacity: 0.85; 
         }
 
-        /* 金色主题 */
         .theme-gold #title-overlay {
             color: #ffd700; 
             text-shadow: 0 0 10px rgba(255, 215, 0, 0.6), 0 0 20px rgba(255, 140, 0, 0.3);
         }
 
-        /* 粉色主题 */
         .theme-pink #title-overlay {
             color: #fff0f5; 
             text-shadow: 0 0 5px #ff69b4, 0 0 15px #ff1493, 0 0 30px #c71585;  
         }
 
-        /* 隐藏不必要的UI */
         #ui-layer { display: none !important; }
         #fullscreen-btn { display: none !important; }
-        #file-input, #loading { display: none; }
     </style>
     <script type="importmap">
         {
@@ -108,13 +110,12 @@
     <div id="canvas-wrapper">
         <div id="canvas-container"></div>
         <div id="title-overlay">Merry Christmas</div>
+        
+        <div id="status-indicator">正在初始化手势识别...</div>
 
         <div id="video-container">
             <video id="input-video" autoplay playsinline muted></video>
-            <canvas id="skeleton-canvas"></canvas>
         </div>
-
-        <div id="ui-layer"></div>
     </div>
 
     <script type="module">
@@ -184,7 +185,6 @@
             renderer.setSize(wrapper.clientWidth, wrapper.clientHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
             renderer.toneMapping = THREE.ACESFilmicToneMapping;
-            // 全局曝光
             renderer.toneMappingExposure = 0.75; 
             container.appendChild(renderer.domElement);
 
@@ -207,7 +207,6 @@
 
             const bloomPass = new UnrealBloomPass(new THREE.Vector2(wrapper.clientWidth, wrapper.clientHeight), 1.5, 0.4, 0.85);
             bloomPass.threshold = 0.3;
-            // 辉光强度
             bloomPass.strength = 0.65; 
             bloomPass.radius = 0.8;
 
@@ -227,7 +226,6 @@
             
             loadPredefinedPhotos();
 
-            // 音乐播放触发逻辑
             const startMusic = () => {
                 const audio = document.getElementById('bgMusic');
                 if (audio) {
@@ -242,9 +240,8 @@
             window.addEventListener('keydown', startMusic);
         }
 
-        // [修改] 自动加载 1.jpg 到 12.jpg
         function loadPredefinedPhotos() {
-            const photoCount = 12; // 这里改为 12
+            const photoCount = 12; 
             for (let i = 1; i <= photoCount; i++) {
                 const img = new Image();
                 img.src = `${i}.jpg`; 
@@ -638,9 +635,8 @@
                 if (isHandPresent) {
                     const centerX = 0.5;
                     const centerY = 0.5;
-                    // [死区优化] 扩大到 0.20，防止误触
+                    // [手势] 优化后的死区 0.20
                     const deadZone = 0.20; 
-                    
                     const maxSpeed = 0.035; 
 
                     const diffX = handPos.x - centerX; 
@@ -656,7 +652,6 @@
                         rotationVelocity.y = dirX * speedFactor;
                         rotationVelocity.x = dirY * speedFactor;
                     } else {
-                        // 在死区内快速停止
                         rotationVelocity.y *= 0.8;
                         rotationVelocity.x *= 0.8;
                     }
@@ -722,7 +717,7 @@
                 if (currentState === STATE.ZOOM && idx === zoomTargetIndex) {
                     const targetWorldPos = new THREE.Vector3(0, 0, 80); 
                     targetPos = mainGroup.worldToLocal(targetWorldPos);
-                    targetScale = 9.0; 
+                    targetScale = 9.0; // 放大倍率
                     mesh.lookAt(camera.position); 
                 } else {
                     targetPos = currentState === STATE.TREE ? mesh.userData.treePos : mesh.userData.scatterPos;
@@ -745,6 +740,8 @@
                 video.srcObject = stream;
                 video.addEventListener("loadeddata", () => {
                     video.play();
+                    // 隐藏 Loading 提示
+                    document.getElementById('status-indicator').style.display = 'none';
                     predictWebcam(handLandmarker, video);
                 });
             });
@@ -769,12 +766,25 @@
         }
         
         function handleGesture(allLandmarks) {
-            const primaryHand = allLandmarks[0];
-            const palmX = 1 - (primaryHand[0].x + primaryHand[9].x) / 2;
-            const palmY = (primaryHand[0].y + primaryHand[9].y) / 2;
+            // [手势] 优化后的手势识别逻辑：寻找偏离中心最远的手作为控制手
+            let bestDist = -1;
+            let activeHand = allLandmarks[0];
+
+            for (const landmarks of allLandmarks) {
+                const px = 1 - (landmarks[0].x + landmarks[9].x) / 2;
+                const py = (landmarks[0].y + landmarks[9].y) / 2;
+                const dist = Math.sqrt(Math.pow(px-0.5, 2) + Math.pow(py-0.5, 2));
+                if(dist > bestDist) {
+                    bestDist = dist;
+                    activeHand = landmarks;
+                }
+            }
+
+            const palmX = 1 - (activeHand[0].x + activeHand[9].x) / 2;
+            const palmY = (activeHand[0].y + activeHand[9].y) / 2;
             
-            handPos.x = handPos.x * 0.6 + palmX * 0.4;
-            handPos.y = handPos.y * 0.6 + palmY * 0.4;
+            handPos.x = handPos.x * 0.8 + palmX * 0.2; // 稍微增加平滑度
+            handPos.y = handPos.y * 0.8 + palmY * 0.2;
 
             let isAnyPinch = false;
             let isAnyFist = false;
@@ -807,9 +817,6 @@
                 mainGroup.rotation.y = mainGroup.rotation.y % (Math.PI * 2);
                 mainGroup.rotation.x = mainGroup.rotation.x % (Math.PI * 2);
                 if (mainGroup.rotation.y < 0) mainGroup.rotation.y += Math.PI * 2;
-                
-                if (isPinkTheme) status.innerHTML = "状态: <span style='color:#ffc0cb'>梦幻少女粉</span>";
-                else status.innerHTML = "状态: <span style='color:#00ff00'>聚合圣诞树</span>";
             } 
             else if (isAnyOpen) {
                 if(currentState === STATE.ZOOM) {
@@ -837,7 +844,6 @@
 
             const mesh = new THREE.Mesh(
                 new THREE.PlaneGeometry(w, h),
-                // [底色提亮] 中灰色 0x999999
                 new THREE.MeshStandardMaterial({ 
                     map: tex, 
                     side: THREE.DoubleSide,
