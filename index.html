@@ -694,7 +694,7 @@
                 if (currentState === STATE.ZOOM && idx === zoomTargetIndex) {
                     const targetWorldPos = new THREE.Vector3(0, 0, 80); 
                     targetPos = mainGroup.worldToLocal(targetWorldPos);
-                    targetScale = 9.0; // [修改] 9.0 让照片在捏合时变得很大
+                    targetScale = 12.0; // [修改] 9.0 让照片在捏合时变得很大
                     mesh.lookAt(camera.position); 
                 } else {
                     targetPos = currentState === STATE.TREE ? mesh.userData.treePos : mesh.userData.scatterPos;
@@ -837,3 +837,4 @@
     </script>
 </body>
 </html>
+
