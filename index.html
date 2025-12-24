@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jewel Christmas Tree - Ultimate</title>
+    <title>Jewel Christmas Tree - Final Fixed</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -33,14 +33,18 @@
             display: block;
         }
         
+        /* [修改] 恢复摄像头可见性 */
         #video-container {
             position: absolute;
             top: 20px; right: 20px; width: 160px; height: 120px; z-index: 2;
-            border-radius: 8px;
+            border-radius: 12px; /* 圆角稍微大一点，更柔和 */
             overflow: hidden;
             transform: scaleX(-1); 
-            opacity: 0.05; 
+            opacity: 0.6; /* 恢复到 0.6，让你能看清手的位置 */
             pointer-events: none;
+            /* 确保没有背景色和边框，消除“灰白方块”感 */
+            background: transparent; 
+            box-shadow: 0 0 10px rgba(0,0,0,0.5); /* 加一点淡淡的阴影让它和背景分离 */
         }
         #input-video { 
             width: 100%;
@@ -137,7 +141,8 @@
         let topStarMesh;
         
         let photoMeshes = [];
-        let currentPhotoSequence = 0; // [修改] 当前播放的照片序号
+        let zoomTargetIndex = -1;
+        let currentPhotoSequence = 0;
 
         let ribbonMesh;
         const RIBBON_COUNT = 12; const RIBBON_SEGMENTS = 600;
@@ -172,7 +177,7 @@
             renderer.setSize(wrapper.clientWidth, wrapper.clientHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
             renderer.toneMapping = THREE.ACESFilmicToneMapping;
-            renderer.toneMappingExposure = 0.8; // [修改] 降低全局曝光，解决过曝
+            renderer.toneMappingExposure = 0.8; 
             container.appendChild(renderer.domElement);
 
             const pmremGenerator = new THREE.PMREMGenerator(renderer);
@@ -194,7 +199,7 @@
 
             const bloomPass = new UnrealBloomPass(new THREE.Vector2(wrapper.clientWidth, wrapper.clientHeight), 1.5, 0.4, 0.85);
             bloomPass.threshold = 0.3;
-            bloomPass.strength = 0.8; // [修改] 降低辉光强度，解决过曝
+            bloomPass.strength = 0.8; 
             bloomPass.radius = 0.8;
 
             composer = new EffectComposer(renderer);
@@ -704,7 +709,7 @@
 
         async function setupMediaPipe() {
             const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm");
-            // [修改] 启用 2 只手检测
+            // [修改] 开启双手检测
             const handLandmarker = await HandLandmarker.createFromOptions(vision, {
                 baseOptions: { modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`, delegate: "GPU" },
                 runningMode: "VIDEO", numHands: 2 
@@ -713,6 +718,8 @@
             navigator.mediaDevices.getUserMedia({ video: true }).then((stream) => {
                 video.srcObject = stream;
                 video.addEventListener("loadeddata", () => {
+                    // [修改] 强制播放视频，防止静止不动
+                    video.play();
                     predictWebcam(handLandmarker, video);
                 });
             });
@@ -730,7 +737,6 @@
 
                 if (result.landmarks && result.landmarks.length > 0) {
                     isHandPresent = true;
-                    // 我们不再画骨架，保持画面干净
                     handleGesture(result.landmarks); 
                 } else { isHandPresent = false; }
             }
@@ -738,7 +744,7 @@
         }
         
         function handleGesture(allLandmarks) {
-            // 只取第一只手的位置来控制旋转，避免冲突
+            // 取第一只手控制旋转
             const primaryHand = allLandmarks[0];
             const palmX = 1 - (primaryHand[0].x + primaryHand[9].x) / 2;
             const palmY = (primaryHand[0].y + primaryHand[9].y) / 2;
@@ -746,12 +752,11 @@
             handPos.x = handPos.x * 0.6 + palmX * 0.4;
             handPos.y = handPos.y * 0.6 + palmY * 0.4;
 
-            // 检测所有手势状态
             let isAnyPinch = false;
             let isAnyFist = false;
             let isAnyOpen = false;
 
-            // 遍历所有检测到的手（支持双手操作）
+            // 检测所有手势
             for (const landmarks of allLandmarks) {
                 let folded = 0;
                 [8,12,16,20].forEach(i => { 
@@ -769,12 +774,10 @@
             if (isAnyPinch && currentState === STATE.SCATTER) {
                 if (photoMeshes.length > 0) {
                     currentState = STATE.ZOOM;
-                    // 设置目标为当前序号的照片
-                    zoomTargetIndex = currentPhotoSequence;
+                    zoomTargetIndex = currentPhotoSequence; // 使用序列号
                 }
             } 
             else if (isAnyFist) {
-                // 握拳切换回树模式
                 if (currentState !== STATE.TREE) isPinkTheme = !isPinkTheme;
                 currentState = STATE.TREE; zoomTargetIndex = -1;
                 rotationVelocity.x = 0; rotationVelocity.y = 0;
@@ -784,7 +787,7 @@
                 if (mainGroup.rotation.y < 0) mainGroup.rotation.y += Math.PI * 2;
             } 
             else if (isAnyOpen) {
-                // [修改] 手张开：如果之前是 ZOOM 状态，则切换回 SCATTER，并且序号 +1
+                // 手张开：如果之前是 ZOOM 状态，则切换回 SCATTER，并且序号 +1
                 if(currentState === STATE.ZOOM) {
                     currentState = STATE.SCATTER;
                     currentPhotoSequence = (currentPhotoSequence + 1) % photoMeshes.length;
@@ -804,11 +807,11 @@
             const tex = new THREE.Texture(img);
             tex.needsUpdate = true; tex.colorSpace = THREE.SRGBColorSpace;
             
-            let w = 2.2, h = 2.2; // [修改] 缩小照片基础尺寸
+            let w = 2.2, h = 2.2; // [修改] 缩小照片框尺寸
             if(img.width > img.height) h = 2.2 * (img.height/img.width); 
             else w = 2.2 * (img.width/img.height);
 
-            // [修改] 使用 Standard 材质 + 灰色，配合低光照，解决过曝
+            // [修改] 材质优化：Standard材质 + 灰色底色 + 金属感，防止过曝
             const mesh = new THREE.Mesh(
                 new THREE.PlaneGeometry(w, h),
                 new THREE.MeshStandardMaterial({ 
@@ -816,7 +819,7 @@
                     side: THREE.DoubleSide,
                     roughness: 0.4,
                     metalness: 0.1,
-                    color: 0xaaaaaa // 降低反照率，防止过亮
+                    color: 0xaaaaaa // 变暗一点
                 })
             );
             const frame = new THREE.Mesh(new THREE.BoxGeometry(w+0.1, h+0.1, 0.05), new THREE.MeshPhysicalMaterial({color:0xffd700, roughness:0.2, metalness:1}));
